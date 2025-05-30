@@ -79,13 +79,14 @@ jobs:
 
       - name: 📊 Upload Code Quality Reports
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: code-quality-reports
           path: |
             core-template/bandit-report.json
             core-template/.mypy_cache/
           retention-days: 7
+          if-no-files-found: warn
 
   # =====================================
   # 🧪 BACKEND TESTS
@@ -163,7 +164,7 @@ jobs:
 
       - name: 📊 Upload test results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: backend-test-results
           path: |
@@ -171,6 +172,7 @@ jobs:
             core-template/htmlcov/
             core-template/coverage.xml
           retention-days: 7
+          if-no-files-found: warn
 
       - name: 📈 Upload coverage to Codecov
         if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
@@ -215,12 +217,12 @@ jobs:
 
       - name: 📊 Upload test results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: frontend-test-results
-          path: |
-            frontend/coverage/
+          path: frontend/coverage/
           retention-days: 7
+          if-no-files-found: warn
 
       - name: 📈 Upload coverage to Codecov
         if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
@@ -290,12 +292,12 @@ jobs:
           docker-compose down -v
 
       - name: 📊 Upload build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: build-artifacts
-          path: |
-            frontend/dist/
+          path: frontend/dist/
           retention-days: 3
+          if-no-files-found: error
 
   # =====================================
   # 🚀 DEPLOYMENT (only on main)
@@ -312,7 +314,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 📥 Download build artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: build-artifacts
           path: frontend/dist/
