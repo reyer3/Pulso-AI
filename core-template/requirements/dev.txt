@@ -45,7 +45,7 @@ interrogate==1.5.0           # Para docstring coverage
 # 🔐 SECURITY SCANNING
 # =====================================
 bandit==1.7.5
-safety==2.4.0b2 # Or latest stable if preferred
+safety==3.2.14               # FIXED: Updated from 2.4.0b2 to latest stable (resolves ruamel.yaml conflict)
 
 # =====================================
 # 📊 CODE QUALITY & METRICS (Coverage is primary here)
@@ -105,9 +105,15 @@ testcontainers==3.7.1        # Para integration testing con containers (database
 # mysql-connector-python==8.2.0 # Para testing MySQL
 
 # =====================================
-# 📊 DATA TESTING & VALIDATION
+# 📊 DATA TESTING & VALIDATION (OPTIONAL)
 # =====================================
-great-expectations==0.18.8   # Para data quality testing
+# REMOVED: great-expectations==0.18.8  # Caused ruamel.yaml version conflict with safety
+# 
+# If you need data quality testing, install separately:
+# great-expectations==1.4.5   # Latest version, compatible with current ruamel.yaml
+# 
+# NOTE: great-expectations adds significant overhead to dev environment
+# Consider adding it only when specifically needed for data testing workflows
 # polars==0.20.2             # Already in base.txt; useful for data testing
 
 # =====================================
