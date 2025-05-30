@@ -79,3 +79,38 @@ openpyxl==3.1.2  # Para export Excel
 click==8.1.7  # Para CLI scripts
 rich==13.7.0  # Para pretty printing en CLI
 typer==0.9.0  # Para CLI moderna
+=======
+# Core dependencies for production
+fastapi==0.104.1
+strawberry-graphql[fastapi]==0.214.1
+uvicorn[standard]==0.24.0
+polars==0.20.0
+pydantic==2.5.0
+redis==5.0.1
+httpx==0.25.2
+
+# Database adapters
+psycopg2-binary==2.9.9
+google-cloud-bigquery==3.14.1
+mysql-connector-python==8.2.0
+
+# Authentication & Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
+
+# Configuration & Environment
+pydantic-settings==2.1.0
+python-dotenv==1.0.0
+PyYAML==6.0.1
+
+# Monitoring & Logging
+prometheus-client==0.19.0
+structlog==23.2.0
+
+# Task Queue
+celery[redis]==5.3.4
+
+# Utilities
+python-dateutil==2.8.2
+pytz==2023.3

@@ -1,250 +1,285 @@
 # 🚀 Pulso-AI Pre-commit Configuration
 # Hooks para mantener calidad del código antes de commits
+# Install: pre-commit install
+# Run manually: pre-commit run --all-files
+
+# =====================================
+# ⚙️ GLOBAL CONFIGURATION
+# =====================================
+default_stages: [commit]
+fail_fast: false
+minimum_pre_commit_version: '3.0.0' # From feature branch
+
+# Default language versions (from main branch, good practice)
+default_language_version:
+  python: python3.11
+  node: "18.20.0" # Ensure this matches your project's Node version
 
 repos:
   # =====================================
-  # 🔍 GENERAL CODE QUALITY
+  # 🔍 GENERAL CODE QUALITY & FILE CHECKS
   # =====================================
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
+    rev: v4.6.0 # Newer version from main
     hooks:
-      # Seguridad básica
+      # Basic Safety & Sanity
       - id: check-added-large-files
-        args: ['--maxkb=1000']
+        args: ['--maxkb=1000'] # feature's value, main is same
       - id: check-merge-conflict
-      - id: detect-private-key
+      - id: detect-private-key # From feature, crucial
+      
+      # File Format Checks
       - id: check-yaml
+        args: [--allow-multiple-documents] # main's arg, feature uses dedicated yamllint
       - id: check-toml
       - id: check-json
-      
-      # Formato y limpieza
+      - id: check-xml # From main, useful
+
+      # Formatting & Cleanup
       - id: trailing-whitespace
-        args: [--markdown-linebreak-ext=md]
+        args: [--markdown-linebreak-ext=md] # feature's markdown handling
+        exclude: '\.(svg)$' # Example: exclude binary-like text files if needed
       - id: end-of-file-fixer
       - id: mixed-line-ending
-        args: ['--fix=lf']
-      
-      # Python específico
+        args: ['--fix=lf'] # From feature, enforces LF
+
+      # Python Specific (from pre-commit-hooks)
       - id: check-ast
-      - id: check-builtin-literals
+      - id: check-builtin-literals # From feature
       - id: check-docstring-first
+        files: ^(core-template|shared|clients)/.*\.py$ # Merged file pattern
       - id: debug-statements
-      - id: name-tests-test
-        args: ['--django']
+        files: ^(core-template|shared|clients)/.*\.py$ # Merged file pattern
+      - id: name-tests-test # From feature, consider if Django is used
+        args: ['--django'] # If not using Django, remove or adapt
+        files: ^(core-template|shared|clients)/.*\btest_.*\.py$ # More specific file pattern for tests
 
   # =====================================
   # 🐍 PYTHON CODE FORMATTING
   # =====================================
-  
-  # Black - Code formatter
   - repo: https://github.com/psf/black
-    rev: 23.7.0
+    rev: 24.4.2 # Newer version from main
     hooks:
       - id: black
         name: Format Python code with Black
-        language_version: python3.11
+        language_version: python3.11 # Explicit, aligns with global
         args: [--line-length=88]
-        files: ^(core-template|shared)/.*\.py$
+        files: ^(core-template|shared|clients)/.*\.py$ # Merged file pattern
 
-  # isort - Import sorting
   - repo: https://github.com/pycqa/isort
-    rev: 5.12.0
+    rev: 5.13.2 # Newer version from main
     hooks:
       - id: isort
         name: Sort Python imports with isort
         args: [--profile=black, --line-length=88]
-        files: ^(core-template|shared)/.*\.py$
+        files: ^(core-template|shared|clients)/.*\.py$ # Merged file pattern
 
   # =====================================
   # 🔍 PYTHON LINTING & TYPE CHECKING
   # =====================================
-  
-  # Flake8 - Linting
   - repo: https://github.com/pycqa/flake8
-    rev: 6.0.0
+    rev: 7.0.0 # Newer version from main
     hooks:
       - id: flake8
         name: Lint Python code with Flake8
         args: [
           --max-line-length=88,
-          --extend-ignore=E203,W503,
+          --extend-ignore=E203,W503, # E203: whitespace before ':', W503: line break before binary operator (Black handles this)
           --max-complexity=10,
-          --per-file-ignores=__init__.py:F401
+          --per-file-ignores=__init__.py:F401 # Ignore unused imports in __init__.py
         ]
-        files: ^(core-template|shared)/.*\.py$
+        files: ^(core-template|shared|clients)/.*\.py$ # Merged file pattern
         additional_dependencies:
-          - flake8-docstrings
-          - flake8-bugbear
-          - flake8-comprehensions
-          - flake8-simplify
+          - flake8-docstrings # For pydocstyle checks via flake8
+          - flake8-bugbear # Finds likely bugs and design problems
+          - flake8-comprehensions # For writing better list/set/dict comprehensions
+          - flake8-simplify # Suggests simplifications, e.g., if/else to direct return
+          # flake8-import-order is omitted as isort handles import sorting
 
-  # MyPy - Type checking
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.5.1
+    rev: v1.10.0 # Newer version from main
     hooks:
       - id: mypy
         name: Type check Python code with MyPy
-        args: [--ignore-missing-imports, --strict]
-        files: ^core-template/src/.*\.py$
-        additional_dependencies:
+        args: [--ignore-missing-imports, --strict] # Strict is good
+        # Consider specifying files more narrowly if needed, e.g., src directories
+        files: ^(core-template/src|shared/src|clients/.*/src)/.*\.py$ # Example of more specific path
+        # Or stick to the broader pattern if `src` subdirectories are not standard:
+        # files: ^(core-template|shared|clients)/.*\.py$
+        additional_dependencies: # Merged dependencies
           - types-requests
           - types-redis
-          - types-PyYAML
+          - types-PyYAML # From feature
+
+  # =====================================
+  # 🔐 PYTHON SECURITY SCANNING
+  # =====================================
+  - repo: https://github.com/pycqa/bandit
+    rev: 1.7.8 # Newer version from main
+    hooks:
+      - id: bandit
+        name: Security scan Python code with Bandit
+        args: [-r, --skip=B101,B601, -f, json, -o, bandit-report.json] # Merged args: skips + report
+        files: ^(core-template|shared|clients)/.*\.py$ # Merged file pattern
+        exclude: ^.*/(tests|test_)/.*\.py$ # Exclude test files from Bandit
+
+  - repo: https://github.com/Lucas-C/pre-commit-hooks-safety # From feature
+    rev: v1.3.2
+    hooks:
+      - id: python-safety-dependencies-check
+        name: Check Python dependencies for vulnerabilities with Safety
+        files: requirements.*\.txt$ # Or pyproject.toml if using Poetry/PDM with specific groups
 
   # =====================================
   # ⚛️ FRONTEND FORMATTING & LINTING
   # =====================================
-  
-  # Prettier - Code formatter for JS/TS/CSS/etc
   - repo: https://github.com/pre-commit/mirrors-prettier
-    rev: v3.0.3
+    rev: v4.0.0-alpha.8 # Newer version from main (alpha, but could be stable by usage)
+    # If v3.0.3 from feature is preferred for stability: rev: v3.0.3
     hooks:
       - id: prettier
         name: Format frontend code with Prettier
-        types_or: [javascript, jsx, ts, tsx, css, scss, json, yaml, markdown]
-        files: ^frontend/.*\.(js|jsx|ts|tsx|css|scss|json|yaml|yml|md)$
-        args: [--print-width=80, --tab-width=2, --single-quote, --trailing-comma=es5]
+        types_or: [javascript, jsx, ts, tsx, css, scss, html, json, yaml, markdown] # Broader types
+        files: ^frontend/.*\.(js|jsx|ts|tsx|css|scss|html|json|yaml|yml|md)$ # feature's file pattern + html
+        exclude: "package-lock.json|yarn.lock" # Exclude lockfiles
+        args: [--print-width=80, --tab-width=2, --single-quote, --trailing-comma=es5] # feature's args
 
-  # ESLint - JavaScript/TypeScript linting
   - repo: https://github.com/pre-commit/mirrors-eslint
-    rev: v8.47.0
+    rev: v9.3.0 # Newer version from main
     hooks:
       - id: eslint
         name: Lint frontend code with ESLint
         files: ^frontend/.*\.(js|jsx|ts|tsx)$
-        types: [file]
-        additional_dependencies:
-          - '@typescript-eslint/eslint-plugin@^6.0.0'
-          - '@typescript-eslint/parser@^6.0.0'
-          - 'eslint-config-prettier@^9.0.0'
-          - 'eslint-plugin-react@^7.33.0'
-          - 'eslint-plugin-react-hooks@^4.6.0'
+        types: [file] # From feature
+        args: [--fix] # From main, enables auto-fixing
+        additional_dependencies: # Merged, using newer versions for @typescript-eslint
+          - eslint@^8.57.0 # Main specified eslint version
+          - '@typescript-eslint/eslint-plugin@^7.0.0' # Updated version range
+          - '@typescript-eslint/parser@^7.0.0' # Updated version range
+          - 'eslint-config-prettier@^9.0.0' # From feature, crucial for Prettier compatibility
+          - 'eslint-plugin-react@^7.33.0' # From feature, if using React
+          - 'eslint-plugin-react-hooks@^4.6.0' # From feature, if using React Hooks
 
   # =====================================
-  # 📝 DOCUMENTATION & CONFIGURATION
+  # 📝 DOCUMENTATION & CONFIGURATION FILES
   # =====================================
-  
-  # YAML Linting
   - repo: https://github.com/adrienverge/yamllint
-    rev: v1.32.0
+    rev: v1.35.1 # Newer version from main
     hooks:
       - id: yamllint
         name: Lint YAML files
-        args: [
-          -d, '{ 
-            extends: default, 
-            rules: { 
-              line-length: {max: 120}, 
-              comments-indentation: disable,
-              document-start: disable
-            } 
+        args: [ # feature's detailed config is generally better than 'relaxed'
+          -d, '{
+            extends: default,
+            rules: {
+              line-length: {max: 120, allow-non-breakable-words: true, allow-non-breakable-inline-mappings: true},
+              comments-indentation: {level: warning}, # Changed to warning from disable
+              document-start: {present: false, level: warning} # Changed to warning from disable
+            }
           }'
         ]
-        files: ^.*\.(yaml|yml)$
+        files: \.(yaml|yml)$ # Apply to all YAML files
 
-  # =====================================
-  # 🔐 SECURITY SCANNING
-  # =====================================
-  
-  # Bandit - Security linting for Python
-  - repo: https://github.com/pycqa/bandit
-    rev: 1.7.5
+  - repo: https://github.com/igorshubovych/markdownlint-cli # From main
+    rev: v0.41.0
     hooks:
-      - id: bandit
-        name: Security scan Python code with Bandit
-        args: [-r, -f, json, -o, bandit-report.json]
-        files: ^(core-template|shared)/.*\.py$
-        exclude: ^.*/(tests|test_)/.*\.py$
+      - id: markdownlint
+        name: Lint Markdown files
+        args: [--fix, --config=.markdownlint.yaml] # Add --config if you have one
+        exclude: ^(CHANGELOG\.md)$ # Exclude specific files like changelogs if auto-generated
 
-  # Safety - Check Python dependencies for known vulnerabilities
-  - repo: https://github.com/Lucas-C/pre-commit-hooks-safety
-    rev: v1.3.2
+  # =====================================
+  # 🐳 DOCKER & INFRASTRUCTURE
+  # =====================================
+  - repo: https://github.com/hadolint/hadolint # From main
+    rev: v2.12.0
     hooks:
-      - id: python-safety-dependencies-check
-        files: requirements.*\.txt$
+      - id: hadolint-docker
+        name: Lint Dockerfiles
+        args: [--ignore=DL3008, --ignore=DL3009] # Example ignores
 
   # =====================================
-  # 🗄️ SQL & DATABASE
+  # 🗄️ SQL (from feature)
   # =====================================
-  
-  # SQL formatting
   - repo: https://github.com/sqlfluff/sqlfluff
-    rev: 2.3.2
+    rev: 2.3.5 # Check for latest stable version
     hooks:
       - id: sqlfluff-lint
         name: Lint SQL files
-        files: ^.*\.sql$
-        args: [--dialect=postgres]
+        # args: [--dialect=postgres] # Specify dialect if not auto-detected from .sqlfluff
+        files: \.sql$
+        additional_dependencies: ['sqlfluff-templater-jinja'] # If using Jinja templating in SQL
       - id: sqlfluff-fix
         name: Fix SQL formatting
-        files: ^.*\.sql$
-        args: [--dialect=postgres]
+        # args: [--dialect=postgres]
+        files: \.sql$
+        additional_dependencies: ['sqlfluff-templater-jinja']
 
   # =====================================
   # 📊 COMMIT MESSAGE FORMATTING
   # =====================================
-  
-  # Conventional Commits
-  - repo: https://github.com/compilerla/conventional-pre-commit
-    rev: v2.4.0
+  - repo: https://github.com/compilerla/conventional-pre-commit # From feature
+    rev: v2.4.0 # Check for newer version like v3.x.x
     hooks:
       - id: conventional-pre-commit
+        name: Check commit message follows Conventional Commits
         stages: [commit-msg]
+        # args: [...] # Add any specific types or scopes if needed
+
+  # Alternative: Commitizen (from main) - choose one style for commit messages
+  # - repo: https://github.com/commitizen-tools/commitizen
+  #   rev: v3.27.0
+  #   hooks:
+  #     - id: commitizen
+  #       stages: [commit-msg]
 
   # =====================================
-  # 🏗️ PROJECT SPECIFIC
+  # 🏗️ PROJECT SPECIFIC (Custom Hooks from feature)
   # =====================================
-  
-  # Custom Pulso-AI validation
   - repo: local
     hooks:
-      # Validate client configurations
       - id: validate-client-config
         name: Validate client configuration files
         entry: python scripts/validate_client_config.py
         language: system
+        types: [file]
         files: ^clients/.*/config/.*\.yaml$
-        pass_filenames: true
-        
-      # Check environment variables
+        pass_filenames: true # Script receives filenames as arguments
+
       - id: check-env-vars
         name: Check .env files for required variables
         entry: python scripts/check_env_vars.py
         language: system
-        files: ^\.env.*$
+        types: [file]
+        files: ^\.env(\.\w+)?$ # Matches .env, .env.local, .env.production etc.
         pass_filenames: true
-        
-      # Validate Docker configurations
+
       - id: validate-docker-compose
         name: Validate Docker Compose files
         entry: docker-compose config -q
         language: system
-        files: ^.*docker-compose.*\.ya?ml$
-        pass_filenames: false
+        types: [file]
+        files: ^docker-compose.*\.ya?ml$
+        pass_filenames: false # docker-compose config reads files specified in its own way or CWD
 
 # =====================================
-# ⚙️ CONFIGURATION
+# ⚙️ CI CONFIGURATION (Merged from both, preferring main's commit messages)
 # =====================================
-
-default_stages: [commit]
-fail_fast: false
-minimum_pre_commit_version: '3.0.0'
-
-# Custom configuration for tools
 ci:
   autofix_commit_msg: |
-    [pre-commit.ci] auto fixes from pre-commit hooks
-    
+    🤖 auto-fix: pre-commit hooks
+
+    [pre-commit.ci] auto fixes from pre-commit.com hooks
+
     for more information, see https://pre-commit.ci
   autofix_prs: true
-  autoupdate_branch: ''
-  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
+  autoupdate_branch: '' # Set to your default branch if you want auto-updates PR'd there
+  autoupdate_commit_msg: '🤖 chore: pre-commit autoupdate'
   autoupdate_schedule: weekly
-  skip: [
-    # Skip hooks that require local environment
+  skip: [ # Hooks to skip on CI (from feature, makes sense for local scripts)
     validate-client-config,
     check-env-vars,
     validate-docker-compose,
-    python-safety-dependencies-check
+    python-safety-dependencies-check # May be handled by other CI steps
   ]
-  submodules: false
+  submodules: false # From main

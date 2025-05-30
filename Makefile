@@ -1,226 +1,178 @@
-# 🚀 Pulso-AI Development Makefile
-# Commands para setup y desarrollo rápido
+# Pulso-AI Makefile
+# Automation for common development tasks
 
-.PHONY: help setup install-deps start-services stop-services restart-services test lint format clean logs status
+.PHONY: help install install-dev setup-dev clean lint test test-quick test-cov docker-up docker-down docs
 
-# Variables
-PYTHON_VERSION = 3.11
-NODE_VERSION = 18
-BACKEND_DIR = core-template
-FRONTEND_DIR = frontend
+# Default target
+help: ## Show this help message
+	@echo "Pulso-AI Development Commands"
+	@echo "=============================="
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-# Colores para output
-RED = \033[0;31m
-GREEN = \033[0;32m
-YELLOW = \033[1;33m
-BLUE = \033[0;34m
-NC = \033[0m # No Color
+# Installation and Setup
+install: ## Install production dependencies
+	cd core-template && pip install -r requirements/base.txt
 
-## 📋 Help - Lista todos los comandos disponibles
-help:
-	@echo "$(BLUE)🚀 Pulso-AI Development Commands$(NC)"
-	@echo ""
-	@echo "$(GREEN)Setup Commands:$(NC)"
-	@echo "  make setup          - Setup completo del entorno de desarrollo"
-	@echo "  make install-deps   - Instala todas las dependencias"
-	@echo ""
-	@echo "$(GREEN)Service Commands:$(NC)"
-	@echo "  make start-services - Inicia servicios Docker (PostgreSQL, Redis)"
-	@echo "  make stop-services  - Detiene servicios Docker"
-	@echo "  make restart-services - Reinicia servicios Docker"
-	@echo "  make logs          - Muestra logs de servicios"
-	@echo "  make status        - Estado de servicios"
-	@echo ""
-	@echo "$(GREEN)Development Commands:$(NC)"
-	@echo "  make test          - Ejecuta todos los tests"
-	@echo "  make lint          - Ejecuta linters en todo el código"
-	@echo "  make format        - Formatea todo el código"
-	@echo "  make clean         - Limpia archivos temporales"
-	@echo ""
-	@echo "$(GREEN)Admin Tools:$(NC)"
-	@echo "  make admin-tools   - Inicia Adminer y Redis Commander"
-	@echo "  make db-shell      - Conecta a PostgreSQL shell"
-	@echo "  make redis-shell   - Conecta a Redis shell"
+install-dev: ## Install development dependencies
+	cd core-template && pip install -r requirements/dev.txt
+	pre-commit install
 
-## 🛠️ Setup completo del entorno de desarrollo
-setup: check-requirements create-directories start-services install-deps
-	@echo "$(GREEN)✅ Entorno de desarrollo configurado exitosamente!$(NC)"
-	@echo ""
-	@echo "$(YELLOW)Next steps:$(NC)"
-	@echo "1. Configura tu IDE con las settings de .vscode/"
-	@echo "2. Activa pre-commit hooks: pre-commit install"
-	@echo "3. Ejecuta tests: make test"
-	@echo "4. Consulta la documentación: docs/development.md"
+setup-dev: ## Complete development environment setup
+	@echo "🚀 Setting up Pulso-AI development environment..."
+	make install-dev
+	make docker-up
+	@echo "✅ Development environment ready!"
+	@echo "📝 Next steps:"
+	@echo "   - Run 'make test' to verify setup"
+	@echo "   - Check services: http://localhost:5050 (pgAdmin), http://localhost:8081 (Redis)"
 
-## 🔍 Verifica requirements del sistema
-check-requirements:
-	@echo "$(BLUE)🔍 Verificando requirements...$(NC)"
-	@command -v docker >/dev/null 2>&1 || { echo "$(RED)❌ Docker no está instalado$(NC)"; exit 1; }
-	@command -v docker-compose >/dev/null 2>&1 || { echo "$(RED)❌ Docker Compose no está instalado$(NC)"; exit 1; }
-	@command -v python3 >/dev/null 2>&1 || { echo "$(RED)❌ Python 3 no está instalado$(NC)"; exit 1; }
-	@command -v node >/dev/null 2>&1 || { echo "$(RED)❌ Node.js no está instalado$(NC)"; exit 1; }
-	@echo "$(GREEN)✅ Todos los requirements están instalados$(NC)"
+# Code Quality
+lint: ## Run all linting tools
+	@echo "🔍 Running linting tools..."
+	cd core-template && black --check src/
+	cd core-template && isort --check-only src/
+	cd core-template && flake8 src/
+	cd core-template && mypy src/
+	cd core-template && bandit -r src/
 
-## 📁 Crea directorios necesarios
-create-directories:
-	@echo "$(BLUE)📁 Creando estructura de directorios...$(NC)"
-	@mkdir -p $(BACKEND_DIR)/src/{domain,application,infrastructure,api}
-	@mkdir -p $(BACKEND_DIR)/tests/{unit,integration,e2e}
-	@mkdir -p $(BACKEND_DIR)/requirements
-	@mkdir -p $(FRONTEND_DIR)/src/{components,hooks,graphql,utils}
-	@mkdir -p docs infrastructure/postgres shared/{auth,monitoring,utils}
-	@mkdir -p clients/template
-	@echo "$(GREEN)✅ Directorios creados$(NC)"
+format: ## Format code with black and isort
+	@echo "🎨 Formatting code..."
+	cd core-template && black src/
+	cd core-template && isort src/
 
-## 📦 Instala todas las dependencias
-install-deps: install-backend-deps install-frontend-deps
-	@echo "$(GREEN)✅ Todas las dependencias instaladas$(NC)"
+# Testing
+test: ## Run all tests with coverage
+	@echo "🧪 Running tests with coverage..."
+	cd core-template && pytest -v --cov=src --cov-report=term-missing
 
-## 🐍 Instala dependencias del backend
-install-backend-deps:
-	@echo "$(BLUE)🐍 Instalando dependencias del backend...$(NC)"
-	@if [ ! -d "$(BACKEND_DIR)/venv" ]; then \
-		cd $(BACKEND_DIR) && python3 -m venv venv; \
-	fi
-	@cd $(BACKEND_DIR) && source venv/bin/activate && pip install --upgrade pip
-	@if [ -f "$(BACKEND_DIR)/requirements/dev.txt" ]; then \
-		cd $(BACKEND_DIR) && source venv/bin/activate && pip install -r requirements/dev.txt; \
-	fi
+test-quick: ## Run tests without coverage (faster)
+	@echo "⚡ Running quick tests..."
+	cd core-template && pytest -v -x --tb=short
 
-## ⚛️ Instala dependencias del frontend
-install-frontend-deps:
-	@echo "$(BLUE)⚛️ Instalando dependencias del frontend...$(NC)"
-	@if [ -f "$(FRONTEND_DIR)/package.json" ]; then \
-		cd $(FRONTEND_DIR) && npm install; \
-	fi
+test-unit: ## Run only unit tests
+	cd core-template && pytest -v -m "unit"
 
-## 🐳 Inicia servicios Docker
-start-services:
-	@echo "$(BLUE)🐳 Iniciando servicios Docker...$(NC)"
-	@docker-compose up -d postgres redis
-	@echo "$(GREEN)✅ Servicios iniciados$(NC)"
-	@make status
+test-integration: ## Run only integration tests
+	cd core-template && pytest -v -m "integration"
 
-## 🛑 Detiene servicios Docker
-stop-services:
-	@echo "$(BLUE)🛑 Deteniendo servicios Docker...$(NC)"
-	@docker-compose down
-	@echo "$(GREEN)✅ Servicios detenidos$(NC)"
+test-cov: ## Generate detailed coverage report
+	cd core-template && pytest --cov=src --cov-report=html
+	@echo "📊 Coverage report: core-template/htmlcov/index.html"
 
-## 🔄 Reinicia servicios Docker
-restart-services:
-	@echo "$(BLUE)🔄 Reiniciando servicios Docker...$(NC)"
-	@docker-compose restart postgres redis
-	@echo "$(GREEN)✅ Servicios reiniciados$(NC)"
+# Docker Services
+docker-up: ## Start development services (PostgreSQL, Redis)
+	@echo "🐳 Starting development services..."
+	docker-compose up -d
+	@echo "✅ Services started!"
+	@echo "   - PostgreSQL: localhost:5432"
+	@echo "   - Redis: localhost:6379" 
+	@echo "   - pgAdmin: http://localhost:5050"
+	@echo "   - Redis Commander: http://localhost:8081"
 
-## 🔧 Inicia herramientas de administración
-admin-tools:
-	@echo "$(BLUE)🔧 Iniciando herramientas de administración...$(NC)"
-	@docker-compose --profile admin up -d adminer redis-commander
-	@echo "$(GREEN)✅ Admin tools disponibles:$(NC)"
-	@echo "  - Adminer (PostgreSQL): http://localhost:8080"
-	@echo "  - Redis Commander: http://localhost:8081"
+docker-down: ## Stop development services
+	@echo "🛑 Stopping development services..."
+	docker-compose down
 
-## 📊 Estado de servicios
-status:
-	@echo "$(BLUE)📊 Estado de servicios:$(NC)"
-	@docker-compose ps
+docker-logs: ## View docker services logs
+	docker-compose logs -f
 
-## 📝 Muestra logs de servicios
-logs:
-	@docker-compose logs -f --tail=100
+docker-clean: ## Clean docker volumes and containers
+	docker-compose down -v --remove-orphans
+	docker system prune -f
 
-## 🗄️ Conecta a PostgreSQL shell
-db-shell:
-	@echo "$(BLUE)🗄️ Conectando a PostgreSQL...$(NC)"
-	@docker-compose exec postgres psql -U pulso_ai -d pulso_ai_dev
+# Development Server
+dev: ## Start development server
+	cd core-template && uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
 
-## 🔴 Conecta a Redis shell
-redis-shell:
-	@echo "$(BLUE)🔴 Conectando a Redis...$(NC)"
-	@docker-compose exec redis redis-cli -a dev_redis_2024
+dev-debug: ## Start development server with debugging
+	cd core-template && python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m uvicorn src.api.main:app --reload
 
-## 🧪 Ejecuta todos los tests
-test: test-backend test-frontend
-	@echo "$(GREEN)✅ Todos los tests completados$(NC)"
+# Frontend (when available)
+frontend-install: ## Install frontend dependencies
+	cd frontend && npm install
 
-## 🐍 Tests del backend
-test-backend:
-	@echo "$(BLUE)🧪 Ejecutando tests del backend...$(NC)"
-	@if [ -d "$(BACKEND_DIR)/venv" ]; then \
-		cd $(BACKEND_DIR) && source venv/bin/activate && \
-		if command -v pytest >/dev/null 2>&1; then \
-			pytest tests/ -v --cov=src --cov-report=term-missing; \
-		else \
-			echo "$(YELLOW)⚠️ pytest no instalado, saltando tests de backend$(NC)"; \
-		fi \
-	else \
-		echo "$(YELLOW)⚠️ Virtual environment no encontrado, saltando tests de backend$(NC)"; \
-	fi
+frontend-dev: ## Start frontend development server
+	cd frontend && npm run dev
 
-## ⚛️ Tests del frontend
-test-frontend:
-	@echo "$(BLUE)🧪 Ejecutando tests del frontend...$(NC)"
-	@if [ -f "$(FRONTEND_DIR)/package.json" ]; then \
-		cd $(FRONTEND_DIR) && npm test; \
-	else \
-		echo "$(YELLOW)⚠️ Frontend no configurado, saltando tests$(NC)"; \
-	fi
+frontend-build: ## Build frontend for production
+	cd frontend && npm run build
 
-## 🔍 Ejecuta linters
-lint: lint-backend lint-frontend
-	@echo "$(GREEN)✅ Linting completado$(NC)"
+frontend-test: ## Run frontend tests
+	cd frontend && npm test
 
-## 🐍 Linting del backend
-lint-backend:
-	@echo "$(BLUE)🔍 Ejecutando linters del backend...$(NC)"
-	@if [ -d "$(BACKEND_DIR)/venv" ]; then \
-		cd $(BACKEND_DIR) && source venv/bin/activate && \
-		if command -v flake8 >/dev/null 2>&1; then flake8 src/ tests/; fi && \
-		if command -v mypy >/dev/null 2>&1; then mypy src/; fi; \
-	fi
+# Utilities
+clean: ## Clean cache and temporary files
+	@echo "🧹 Cleaning temporary files..."
+	find . -type f -name "*.pyc" -delete
+	find . -type d -name "__pycache__" -delete
+	find . -type d -name ".pytest_cache" -delete
+	find . -type f -name ".coverage" -delete
+	find . -type d -name "htmlcov" -exec rm -rf {} + 2>/dev/null || true
+	find . -type d -name ".mypy_cache" -exec rm -rf {} + 2>/dev/null || true
 
-## ⚛️ Linting del frontend
-lint-frontend:
-	@echo "$(BLUE)🔍 Ejecutando linters del frontend...$(NC)"
-	@if [ -f "$(FRONTEND_DIR)/package.json" ]; then \
-		cd $(FRONTEND_DIR) && npm run lint; \
-	fi
+check: ## Run all checks (lint + test)
+	make lint
+	make test
 
-## 🎨 Formatea código
-format: format-backend format-frontend
-	@echo "$(GREEN)✅ Formato aplicado$(NC)"
+docs: ## Generate documentation
+	cd core-template && mkdocs serve
 
-## 🐍 Formato del backend
-format-backend:
-	@echo "$(BLUE)🎨 Formateando código del backend...$(NC)"
-	@if [ -d "$(BACKEND_DIR)/venv" ]; then \
-		cd $(BACKEND_DIR) && source venv/bin/activate && \
-		if command -v black >/dev/null 2>&1; then black src/ tests/; fi && \
-		if command -v isort >/dev/null 2>&1; then isort src/ tests/; fi; \
-	fi
+docs-build: ## Build documentation
+	cd core-template && mkdocs build
 
-## ⚛️ Formato del frontend
-format-frontend:
-	@echo "$(BLUE)🎨 Formateando código del frontend...$(NC)"
-	@if [ -f "$(FRONTEND_DIR)/package.json" ]; then \
-		cd $(FRONTEND_DIR) && npm run format; \
-	fi
+# Client Management (scripts)
+create-client: ## Create new client (usage: make create-client CLIENT=client-name)
+	python scripts/client-management/create_client.py $(CLIENT)
 
-## 🧹 Limpia archivos temporales
-clean:
-	@echo "$(BLUE)🧹 Limpiando archivos temporales...$(NC)"
-	@find . -type f -name "*.pyc" -delete
-	@find . -type d -name "__pycache__" -delete
-	@find . -type d -name ".pytest_cache" -delete
-	@find . -type d -name "*.egg-info" -delete
-	@find . -type f -name ".coverage" -delete
-	@find . -type d -name "node_modules" -prune -o -type f -name "*.log" -delete
-	@echo "$(GREEN)✅ Limpieza completada$(NC)"
+deploy-client: ## Deploy client (usage: make deploy-client CLIENT=client-name ENV=dev)
+	python scripts/client-management/deploy_client.py $(CLIENT) --env $(ENV)
 
-## 🧨 Reset completo del entorno
-reset: clean stop-services
-	@echo "$(YELLOW)⚠️ Eliminando volúmenes Docker...$(NC)"
-	@docker-compose down -v
-	@docker system prune -f
-	@echo "$(GREEN)✅ Reset completado$(NC)"
+# Database
+db-init: ## Initialize development databases
+	@echo "🗄️ Initializing databases..."
+	# This will be implemented when we have database initialization scripts
+
+db-migrate: ## Run database migrations
+	@echo "🔄 Running migrations..."
+	# This will be implemented with alembic
+
+db-seed: ## Seed database with test data
+	@echo "🌱 Seeding test data..."
+	# This will be implemented for development data
+
+# CI/CD Simulation
+ci: ## Simulate CI pipeline locally
+	@echo "🔄 Running CI pipeline simulation..."
+	make lint
+	make test
+	make docker-up
+	# Add integration tests here
+	make docker-down
+	@echo "✅ CI pipeline completed successfully!"
+
+# Performance
+benchmark: ## Run performance benchmarks
+	cd core-template && python -m pytest tests/performance/ -v
+
+# Security
+security-check: ## Run security checks
+	cd core-template && bandit -r src/
+	cd core-template && safety check
+
+# Project Statistics
+stats: ## Show project statistics
+	@echo "📊 Project Statistics"
+	@echo "===================="
+	@echo "Python files: $$(find . -name '*.py' | wc -l)"
+	@echo "TypeScript files: $$(find . -name '*.ts' -o -name '*.tsx' | wc -l)"
+	@echo "Total lines of code: $$(find . -name '*.py' -o -name '*.ts' -o -name '*.tsx' | xargs wc -l | tail -1)"
+	@echo "Test files: $$(find . -name 'test_*.py' -o -name '*_test.py' | wc -l)"
+
+# Environment
+env-check: ## Check environment setup
+	@echo "🔍 Environment Check"
+	@echo "==================="
+	@python --version
+	@node --version || echo "Node.js not installed"
+	@docker --version || echo "Docker not installed"
+	@docker-compose --version || echo "Docker Compose not installed"
