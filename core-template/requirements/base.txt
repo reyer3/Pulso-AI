@@ -1,0 +1,81 @@
+# 🚀 Pulso-AI Core Dependencies
+# Dependencias base para el sistema sin herramientas de desarrollo
+
+# =====================================
+# 🌐 WEB FRAMEWORK & API
+# =====================================
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+strawberry-graphql[fastapi]==0.218.0
+
+# =====================================
+# 📊 DATA PROCESSING & ETL
+# =====================================
+polars==0.20.2
+pyarrow==14.0.1
+pandas==2.1.4  # Para compatibility con algunas librerías legacy
+
+# =====================================
+# 🗄️ DATABASE & ORM
+# =====================================
+sqlalchemy==2.0.23
+asyncpg==0.29.0        # PostgreSQL async driver
+psycopg2-binary==2.9.9 # PostgreSQL sync driver (para algunas operaciones)
+alembic==1.13.0        # Database migrations
+
+# =====================================
+# 🔴 CACHING & MESSAGE QUEUE
+# =====================================
+redis==5.0.1
+celery==5.3.4
+kombu==5.3.4
+
+# =====================================
+# 🔐 AUTHENTICATION & SECURITY
+# =====================================
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
+cryptography==41.0.8
+
+# =====================================
+# ⚙️ CONFIGURATION & ENVIRONMENT
+# =====================================
+pydantic==2.5.2
+pydantic-settings==2.1.0
+python-dotenv==1.0.0
+pyyaml==6.0.1
+
+# =====================================
+# 📡 HTTP CLIENT & EXTERNAL APIs
+# =====================================
+httpx==0.25.2
+aiohttp==3.9.1
+
+# =====================================
+# 📝 LOGGING & MONITORING
+# =====================================
+structlog==23.2.0
+sentry-sdk[fastapi]==1.39.1
+prometheus-client==0.19.0
+
+# =====================================
+# 🏢 CLOUD & DATABASE PROVIDERS
+# =====================================
+google-cloud-bigquery==3.13.0
+google-cloud-storage==2.12.0
+boto3==1.34.0  # AWS SDK para futuras integraciones
+
+# =====================================
+# 📊 BUSINESS INTELLIGENCE SPECIFIC
+# =====================================
+python-dateutil==2.8.2
+pytz==2023.3
+openpyxl==3.1.2  # Para export Excel
+
+# =====================================
+# 🔧 UTILITIES
+# =====================================
+click==8.1.7  # Para CLI scripts
+rich==13.7.0  # Para pretty printing en CLI
+typer==0.9.0  # Para CLI moderna
