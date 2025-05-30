@@ -1,0 +1,148 @@
+# 🛠️ Pulso-AI Development Dependencies
+# Herramientas de desarrollo, testing y debugging
+
+# Incluir dependencias base
+-r base.txt
+
+# =====================================
+# 🧪 TESTING FRAMEWORK
+# =====================================
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+pytest-xdist==3.5.0          # Para parallel testing
+pytest-benchmark==4.0.0      # Para performance testing
+pytest-html==4.1.1          # Para HTML reports
+factory-boy==3.3.1          # Para test data generation
+faker==20.1.0               # Para fake data en tests
+
+# =====================================
+# 🎨 CODE FORMATTING & LINTING
+# =====================================
+black==23.11.0
+isort==5.12.0
+flake8==6.1.0
+flake8-docstrings==1.7.0
+flake8-bugbear==23.11.28
+flake8-comprehensions==3.14.0
+flake8-simplify==0.21.0
+mypy==1.7.1
+
+# =====================================
+# 🔐 SECURITY SCANNING
+# =====================================
+bandit==1.7.5
+safety==2.4.0b2
+
+# =====================================
+# 📊 CODE QUALITY & METRICS
+# =====================================
+coverage==7.3.2
+radon==6.0.1               # Para complexity metrics
+vulture==2.10              # Para dead code detection
+interrogate==1.5.0         # Para docstring coverage
+
+# =====================================
+# 🐛 DEBUGGING & PROFILING
+# =====================================
+ipdb==0.13.13              # Improved debugger
+memory-profiler==0.61.0    # Para memory profiling
+line-profiler==4.1.1       # Para line-by-line profiling
+py-spy==0.3.14             # Para production profiling
+
+# =====================================
+# 📝 DOCUMENTATION
+# =====================================
+sphinx==7.2.6
+sphinx-rtd-theme==1.3.0
+sphinx-autodoc-typehints==1.25.2
+myst-parser==2.0.0         # Para Markdown en Sphinx
+
+# =====================================
+# 🔧 DEVELOPMENT UTILITIES
+# =====================================
+pre-commit==3.6.0
+python-dotenv==1.0.0       # Ya en base.txt pero útil tenerlo explícito
+watchdog==3.0.0            # Para file watching
+honcho==1.1.0              # Para process management
+
+# =====================================
+# 📡 API TESTING & MOCKING
+# =====================================
+httpx==0.25.2              # Ya en base.txt para testing HTTP clients
+responses==0.24.1          # Para mock HTTP responses
+respx==0.20.2              # Para async HTTP mocking
+pytest-httpx==0.27.0       # Para testing HTTPX clients
+
+# =====================================
+# 🗄️ DATABASE TESTING
+# =====================================
+pytest-postgresql==5.0.0   # Para testing con PostgreSQL
+pytest-redis==3.0.2        # Para testing con Redis
+testcontainers==3.7.1      # Para integration testing con containers
+
+# =====================================
+# 📊 DATA TESTING & VALIDATION
+# =====================================
+great-expectations==0.18.8  # Para data quality testing
+polars==0.20.2             # Ya en base.txt pero útil para data testing
+hypothesis==6.92.1         # Para property-based testing
+mimesis==11.1.0            # Para fake data generation
+
+# =====================================
+# 🎭 MOCK & FIXTURES
+# =====================================
+freezegun==1.2.2           # Para mock datetime
+time-machine==2.13.0       # Alternativa moderna a freezegun
+responses==0.24.1          # Para mock HTTP requests
+aioresponses==0.7.6        # Para mock async HTTP
+
+# =====================================
+# 📈 PERFORMANCE & BENCHMARKING
+# =====================================
+locust==2.17.0             # Para load testing
+pytest-benchmark==4.0.0    # Ya incluido arriba
+scalene==1.5.26            # Para memory/CPU profiling
+
+# =====================================
+# 🔍 STATIC ANALYSIS
+# =====================================
+pylint==3.0.3
+pycodestyle==2.11.1
+pydocstyle==6.3.0
+
+# =====================================
+# 🏗️ BUILD & PACKAGING
+# =====================================
+build==1.0.3
+wheel==0.42.0
+twine==4.0.2
+
+# =====================================
+# 📱 NOTEBOOK & INTERACTIVE
+# =====================================
+jupyter==1.0.0
+ipython==8.17.2
+notebook==7.0.6
+
+# =====================================
+# 🧬 TYPE STUBS
+# =====================================
+types-PyYAML==6.0.12.12
+types-python-dateutil==2.8.19.14
+types-redis==4.6.0.11
+types-requests==2.31.0.10
+
+# =====================================
+# 🔄 WORKFLOW & AUTOMATION
+# =====================================
+invoke==2.2.0              # Para task automation
+fabric==3.2.2              # Para remote deployment tasks
+
+# =====================================
+# 🏢 CLIENT-SPECIFIC TESTING
+# =====================================
+# Para testing con diferentes databases
+pymongo==4.6.0             # Para testing MongoDB
+mysql-connector-python==8.2.0  # Para testing MySQL
