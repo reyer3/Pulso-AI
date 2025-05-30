@@ -1,0 +1,93 @@
+# Pulso-AI Development Environment
+# docker-compose up -d para levantar servicios de desarrollo
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database for development
+  postgres:
+    image: postgres:15-alpine
+    container_name: pulso-postgres
+    environment:
+      POSTGRES_DB: pulso_dev
+      POSTGRES_USER: pulso_user
+      POSTGRES_PASSWORD: pulso_dev_password
+      POSTGRES_MULTIPLE_DATABASES: "movistar_peru,claro_colombia,tigo_guatemala"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/database/init:/docker-entrypoint-initdb.d
+    networks:
+      - pulso-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pulso_user -d pulso_dev"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis for caching and session storage
+  redis:
+    image: redis:7-alpine
+    container_name: pulso-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - pulso-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    command: redis-server --appendonly yes
+
+  # pgAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pulso-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@pulso-ai.local
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - pulso-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Redis Commander for Redis management
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: pulso-redis-commander
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    networks:
+      - pulso-network
+    depends_on:
+      redis:
+        condition: service_healthy
+
+# Volumes for data persistence
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+# Network for service communication
+networks:
+  pulso-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
