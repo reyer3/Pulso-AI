@@ -78,4 +78,4 @@ openpyxl==3.1.2  # Para export Excel
 # =====================================
 click==8.1.7  # Para CLI scripts
 rich==13.7.0  # Para pretty printing en CLI
-typer==0.9.0  # Para CLI moderna
+typer==0.16.0  # Para CLI moderna - UPDATED to latest version
