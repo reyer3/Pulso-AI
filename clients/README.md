@@ -1,81 +1,97 @@
-# 🏢 Clientes Pulso-AI
+# 🏢 Clientes (Instancias Multitenant)
 
-Este directorio contiene las instancias específicas de cada cliente, implementando el patrón **Template + Isolated Instances** para multi-tenancy.
+**Resumen:** Este directorio alberga configuraciones, adaptaciones y despliegues específicos para cada cliente de la plataforma Pulso-AI. Implementa una estrategia multitenant utilizando un patrón de "Plantilla + Instancias Aisladas" (Template + Isolated Instances), permitiendo que cada cliente tenga una experiencia personalizada pero consistente.
 
-## 🎯 Arquitectura Multi-Cliente
+**Propósito Clave y Responsabilidades:**
+-   **Aislamiento de Clientes:** Asegurar que los datos, la configuración y el despliegue de cada cliente estén estrictamente aislados.
+-   **Personalización:** Permitir configuraciones, adaptadores o variaciones menores de funcionalidad específicas para cada cliente.
+-   **Escalabilidad:** Facilitar la incorporación eficiente de nuevos clientes utilizando una plantilla estandarizada.
+-   **Gestión:** Proporcionar una estructura clara para administrar múltiples instancias de clientes.
+
+## 🏛️ Arquitectura Multi-Cliente
+
+La idea central es mantener un directorio base `template/` que sirva como modelo para todas las nuevas instancias de clientes. Cada cliente obtiene luego su propio directorio, heredando de la plantilla pero permitiendo modificaciones específicas.
 
 ```
 clients/
-├── template/                 # Template base para nuevos clientes
-│   ├── config/              # Configuraciones template
-│   ├── docker-compose.yml   # Deploy template
-│   └── k8s/                 # Manifiestos Kubernetes template
-├── movistar-peru/           # Cliente Movistar Perú
-├── claro-colombia/          # Cliente Claro Colombia
-└── tigo-guatemala/          # Cliente Tigo Guatemala
+├── template/                 # Modelo base para nuevos servicios de cliente.
+│   │                         # Contiene configuraciones base, setup de Docker,
+│   │                         # manifiestos de Kubernetes y un README estándar.
+│   ├── config/
+│   ├── docker-compose.yml
+│   ├── k8s/
+│   └── README.md
+├── cliente-A/                # Ejemplo: Instancia para el Cliente A
+│   │                         # (ej., movistar-peru)
+│   └── ... (la estructura refleja la plantilla, con modificaciones)
+├── cliente-B/                # Ejemplo: Instancia para el Cliente B
+│   │                         # (ej., claro-colombia)
+│   └── ...
+└── README.md                 # Este archivo, explicando el directorio de clientes.
 ```
 
-## 🔐 Principios de Aislamiento
+## 🔑 Principios de Aislamiento
 
-1. **Datos completamente aislados**: Cada cliente tiene su propia base de datos/namespace
-2. **Configuración independiente**: YAML específico por cliente sin compartir secretos
-3. **Deploy independiente**: Cada cliente puede tener versiones diferentes
-4. **Monitoreo separado**: Logs y métricas aisladas por cliente
+1.  **Segregación de Datos**: Cada cliente tiene su propia base de datos, esquema o namespace dedicado.
+2.  **Independencia de Configuración**: Los ajustes específicos del cliente se gestionan en sus respectivos directorios, sin compartir secretos.
+3.  **Autonomía de Despliegue**: El servicio de cada cliente puede ser desplegado, actualizado y escalado independientemente. Diferentes versiones pueden coexistir.
+4.  **Monitoreo y Logging**: Logs, métricas y alertas están etiquetados y son filtrables por cliente.
 
-## 🚀 Agregar Nuevo Cliente
+## 🚀 Añadir un Nuevo Cliente
 
+Los nuevos clientes se provisionan típicamente usando un script que copia y personaliza la plantilla `template/`.
 ```bash
-# Usar script de automatización
-python scripts/create_client.py nuevo-cliente "Nuevo Cliente SA" \
-  --database postgresql --country CO
-
-# Resultado: Estructura completa lista para configurar
+# Ejemplo (comando conceptual)
+python scripts/provision_new_client.py <nombre-cliente> --region <region>
 ```
+Este script haría lo siguiente:
+1.  Copiar el directorio `clients/template/` a `clients/<nombre-cliente>/`.
+2.  Actualizar los valores de marcador de posición en los archivos de configuración.
+3.  Inicializar cualquier recurso requerido (ej., esquema de base de datos, buckets S3).
 
 ## 📁 Estructura por Cliente
 
-Cada directorio de cliente sigue esta estructura estándar:
-
+Cada directorio individual de cliente (ej., `clients/cliente-A/`) generalmente sigue esta estructura:
 ```
-cliente-ejemplo/
-├── config/
-│   ├── client.yaml          # Configuración principal
-│   ├── dimensions.yaml      # Dimensiones y métricas
-│   ├── database.yaml        # Configuración de BD
-│   └── secrets/            # Credenciales (gitignored)
-├── src/
-│   └── adapters/           # Adaptadores específicos si necesarios
-├── docker-compose.yml      # Deploy del cliente
-├── k8s/                    # Manifiestos Kubernetes
+<nombre-cliente>/
+├── config/                 # Configuraciones específicas del cliente
+│   ├── client_settings.yaml  # Ajustes principales, feature flags
+│   ├── dimensions.yaml       # Dimensiones y métricas personalizadas
+│   └── secrets/              # Marcador para gestión de secretos (ej., Vault, archivos .env - ignorados por git)
+├── src/                    # Código fuente para adaptadores o lógica específica del cliente
+│   └── adapters/
+├── docker-compose.override.yml # Modificaciones para despliegue local con Docker
+├── k8s/                    # Manifiestos de Kubernetes adaptados para el cliente
 │   ├── deployment.yaml
 │   ├── service.yaml
 │   └── configmap.yaml
-└── README.md               # Documentación específica
+└── README.md               # Documentación específica para esta configuración de cliente.
 ```
 
-## 🔄 Workflow de Desarrollo
+## 🔄 Flujo de Desarrollo
 
-1. **Template First**: Todos los cambios van primero al template
-2. **Cliente Sync**: Los clientes heredan del template automáticamente
-3. **Override Selectivo**: Configuraciones específicas solo cuando es necesario
-4. **Testing Isolated**: Cada cliente tiene su propio entorno de testing
+1.  **Primero la Plantilla (Template-First)**: Los cambios genéricos y las nuevas características deberían idealmente añadirse primero a `clients/template/`.
+2.  **Sincronización**: Debería existir un mecanismo (script o proceso manual) para propagar los cambios relevantes de la plantilla a los clientes existentes.
+3.  **Modificaciones Selectivas**: Los ajustes específicos del cliente se realizan directamente en sus respectivos directorios.
+4.  **Pruebas Aisladas**: El entorno de cada cliente debería poder probarse independientemente.
 
-## 📊 Clientes Activos
+## 📊 Estado del Cliente (Ejemplo)
 
-| Cliente | Estado | Base de Datos | Región | URL |
-|---------|--------|---------------|--------|-----|
-| template | ✅ Base | - | - | - |
-| movistar-peru | 🚧 Desarrollo | BigQuery | PE | - |
-| claro-colombia | 📋 Planeado | PostgreSQL | CO | - |
-| tigo-guatemala | 📋 Planeado | MySQL | GT | - |
+| Nombre Cliente  | Estado        | Región Clave | Notas                                     |
+|-----------------|---------------|--------------|-------------------------------------------|
+| `template`      | ✅ Base Activa | N/A          | Plantilla maestra para todos los clientes.|
+| `movistar-peru` | 🚧 Desarrollo  | PE           | Cliente piloto inicial.                   |
+| `claro-colombia`| 📋 Planeado    | CO           | Esperando configuración.                  |
 
-## 🛡️ Seguridad y Compliance
+## 🛡️ Seguridad y Cumplimiento
 
-- **Zero Cross-Client Access**: Garantizado por arquitectura
-- **Secrets Management**: Usando external secrets operator
-- **Audit Logging**: Cada acción traceable por cliente
-- **Data Residency**: Respeta regulaciones locales por país
+-   **Acceso Cero a Datos Entre Clientes**: Reforzado a nivel de arquitectura e infraestructura.
+-   **Gestión de Secretos**: Utilizar herramientas como HashiCorp Vault o almacenes de secretos específicos del entorno.
+-   **Registros de Auditoría**: Todas las acciones significativas y cambios de configuración son rastreables por cliente.
+-   **Residencia de Datos**: Asegurar que los datos del cliente se almacenen y procesen de acuerdo con las regulaciones regionales.
 
 ---
 
-**Next Steps**: Configurar primer cliente (Movistar Perú) usando el template base.
+**Próximos Pasos**: Definir la estructura inicial de `clients/template/` y el script `provision_new_client.py`.
+El contenido existente para `movistar-peru`, `claro-colombia`, etc., puede moverse a subdirectorios si ya son instancias de cliente reales. Si son solo ejemplos, el directorio puede limpiarse para contener únicamente `template/` y este README.
+```

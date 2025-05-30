@@ -1,95 +1,73 @@
-# 📚 Documentación - Pulso-AI
+# 📚 Documentación del Proyecto - Pulso-AI
 
-Este directorio contiene toda la documentación técnica y de usuario del proyecto Pulso-AI.
+**Resumen:** Este directorio sirve como el repositorio central para toda la documentación relacionada con el proyecto Pulso-AI. Esto incluye documentación técnica, diagramas de arquitectura, registros de decisiones, guías de usuario, referencias de API y guías de configuración/operación.
 
-## 📋 Estructura
+**Propósito Clave y Responsabilidades:**
+-   **Centro de Conocimiento (Knowledge Hub):** Proporcionar una única fuente de verdad para entender el proyecto Pulso-AI, su arquitectura y sus componentes.
+-   **Orientación:** Ofrecer instrucciones claras para desarrolladores, administradores y usuarios finales.
+-   **Registro de Decisiones:** Documentar decisiones arquitectónicas clave y su justificación (ej., mediante Registros de Decisiones de Arquitectura - ADRs).
+-   **Incorporación (Onboarding):** Facilitar la incorporación de nuevos miembros del equipo y colaboradores.
+-   **Mantenimiento y Soporte:** Ayudar en el mantenimiento, la resolución de problemas y el soporte de la plataforma.
+
+## 📁 Estructura del Directorio y Tipos de Contenido
+
+La documentación está organizada para ser fácilmente navegable:
 
 ```
 docs/
-├── README.md                 # Este archivo
-├── architecture.md           # Documentación de arquitectura detallada
-├── client-setup.md          # Guía para configurar nuevos clientes
-├── api-reference.md         # Referencia completa de APIs
-├── deployment.md            # Guías de deployment
-├── troubleshooting.md       # Solución de problemas comunes
-└── examples/                # Ejemplos prácticos
-    ├── configurations/      # Ejemplos de configuraciones por cliente
-    ├── queries/             # Ejemplos de queries GraphQL
-    └── integrations/        # Ejemplos de integraciones
+├── README.md                     # Este archivo de resumen
+├── architecture/                 # Documentos detallados de arquitectura
+│   ├── overview.md               # Arquitectura del sistema de alto nivel
+│   ├── hexagonal-architecture.md # Explicación del patrón hexagonal utilizado
+│   ├── adrs/                     # Registros de Decisiones de Arquitectura (ADRs)
+│   │   ├── ADR-001-ejemplo.md
+│   └── diagrams/                 # Archivos fuente para diagramas (ej., Mermaid, PlantUML, o archivos de imagen)
+├── user-guides/                  # Manuales para usuarios finales y administradores de clientes
+│   ├── client-onboarding.md      # Incorporación de clientes
+│   └── dashboard-usage.md        # Uso de dashboards
+├── developer-guides/             # Información para desarrolladores
+│   ├── getting-started.md        # Cómo empezar
+│   ├── coding-standards.md       # Estándares de codificación
+│   └── core-template-deep-dive.md # Análisis profundo del core-template
+├── api-reference/                # Documentación detallada de API (ej., especificaciones OpenAPI, docs de esquema GraphQL)
+│   └── gateway-api.md
+├── operations/                   # Guías para despliegue, mantenimiento y resolución de problemas
+│   ├── deployment-guide.md
+│   └── troubleshooting.md
+├── contributing.md               # Directrices para contribuir al proyecto (puede enlazar al CONTRIBUTING.md raíz)
+└── project-management/           # (Opcional) Hojas de ruta, planes de sprint, notas de reunión si no se gestionan en otro lugar
+    └── roadmap.md
 ```
 
-## 🎯 Propósito
+## 🎯 Audiencia Objetivo
 
-Esta documentación sirve para:
-
-### 👨‍💻 **Desarrolladores**
-- Entender la arquitectura hexagonal del sistema
-- Implementar nuevos adaptadores de datos
-- Contribuir al core del sistema
-- Debuggear y troubleshooting
-
-### 🏢 **Administradores de Cliente**
-- Configurar nuevos clientes en 4 horas
-- Personalizar dashboards sin código
-- Gestionar conexiones a fuentes de datos
-- Configurar métricas y dimensiones
-
-### 📊 **Usuarios Finales**
-- Navegar dashboards eficientemente
-- Utilizar cross-filtering avanzado
-- Interpretar métricas de negocio
-- Exportar datos y reportes
+Esta documentación está destinada a diversos interesados:
+-   **Desarrolladores:** Para entender el diseño del sistema, APIs y directrices de contribución.
+-   **Administradores/Operadores de Clientes:** Para configurar, ajustar y gestionar instancias de clientes.
+-   **Usuarios Finales:** Para aprender a usar las características de la plataforma eficazmente.
+-   **Arquitectos y Líderes Técnicos:** Para revisar decisiones arquitectónicas y capacidades del sistema.
 
 ## 📝 Estándares de Documentación
 
-### Formato
-- **Markdown** para todos los documentos
-- **Mermaid** para diagramas técnicos
-- **YAML** para ejemplos de configuración
-- **Screenshots** para guías de usuario
+-   **Formato:** Principalmente Markdown (`.md`).
+-   **Diagramas:** Usar herramientas de diagramación basadas en texto como Mermaid siempre que sea posible para facilitar el control de versiones. Las imágenes son aceptables para visuales complejos.
+-   **Lenguaje:** Claro, conciso y sin ambigüedades. (Primario: Español, Secundario: Inglés, según el original).
+-   **Estructura:** Los documentos deben tener un propósito claro, prerrequisitos (si los hay), contenido principal, pasos de validación (si aplica) y enlaces a documentos relacionados.
 
-### Estructura de Documentos
-```markdown
-# Título del Documento
+## 🔄 Mantenimiento y Actualizaciones
 
-## 🎯 Propósito
-[Explicación clara del objetivo]
+-   La documentación debe actualizarse concurrentemente con los cambios de código o los lanzamientos de nuevas características.
+-   Se deben realizar revisiones periódicas (ej., trimestrales) para asegurar la precisión y relevancia.
+-   Los comentarios sobre la documentación pueden enviarse a través de Issues de GitHub.
 
-## 📋 Prerrequisitos
-[Lo que necesita saber el lector]
+## 🤝 Contribuir a la Documentación
 
-## 🚀 Contenido Principal
-[Contenido paso a paso]
-
-## ✅ Validación
-[Cómo verificar que funcionó]
-
-## 🔗 Enlaces Relacionados
-[Links a otros documentos relevantes]
-```
-
-## 🔄 Mantenimiento
-
-- **Actualización**: Con cada release mayor
-- **Revisión**: Mensual para exactitud
-- **Feedback**: Issues en GitHub para mejoras
-- **Translations**: Español (principal), English (secundario)
-
-## 🤝 Contribuciones
-
-Para contribuir a la documentación:
-
-1. **Fork** del repositorio
-2. **Branch** con prefijo `docs/`
-3. **Edición** siguiendo los estándares
-4. **PR** con descripción clara de cambios
-
-## 📞 Soporte
-
-- **Issues**: Para reportar errores en docs
-- **Discussions**: Para preguntas generales
-- **Wiki**: Para FAQs y tips rápidos
+Las contribuciones son altamente alentadas:
+1.  Adherirse a los estándares de documentación descritos.
+2.  Usar un nombre de rama claro y descriptivo (ej., `docs/actualizar-resumen-arquitectura`).
+3.  Enviar un Pull Request con una descripción detallada de los cambios realizados.
 
 ---
 
-*Esta documentación forma parte del ecosistema Pulso-AI para democratizar el Business Intelligence.*
+*Esta documentación es una parte vital del ecosistema Pulso-AI, con el objetivo de empoderar a todos los usuarios y colaboradores.*
+```

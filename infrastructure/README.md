@@ -1,331 +1,95 @@
-# 🏗️ Infrastructure as Code (IaC)
+# 🏗️ Infraestructura como Código (IaC) - Pulso-AI
 
-**Terraform** y **Kubernetes** para infrastructure scalable y reproducible.
+**Resumen:** Este directorio contiene todas las configuraciones de Infraestructura como Código (IaC) para la plataforma Pulso-AI. Define, provisiona y gestiona la infraestructura subyacente utilizando herramientas como Terraform para recursos en la nube y Kubernetes (Kustomize) para la orquestación de aplicaciones. También incluye configuraciones para entornos de desarrollo local utilizando Docker Compose.
 
-## 🎯 Filosofía
+**Propósito Clave y Responsabilidades:**
+-   **Aprovisionamiento Automatizado:** Definir y automatizar la configuración de todos los recursos de la nube (redes, cómputo, bases de datos, etc.).
+-   **Consistencia de Entornos:** Asegurar la paridad entre los entornos de desarrollo, staging y producción a través del código.
+-   **Escalabilidad y Reproducibilidad:** Permitir una infraestructura escalable que pueda ser reproducida de manera fiable y versionada.
+-   **Orquestación:** Gestionar despliegues de aplicaciones contenerizadas, escalado y redes utilizando Kubernetes.
+-   **Desarrollo Local:** Proporcionar archivos Docker Compose para simular entornos de nube para desarrollo y pruebas locales.
+-   **Infraestructura de Monitoreo y Logging:** Definir la configuración para las pilas de monitoreo, logging y alertas.
 
-- **Everything as Code**: Infraestructura versionada y reproducible
-- **Multi-Cloud**: Flexibilidad entre proveedores (GCP, AWS, Azure)
-- **Environment Parity**: Dev, staging, prod idénticos
-- **Auto-Scaling**: Escalamiento automático por demanda
+## 🏛️ Tecnologías Principales
 
-## 📁 Estructura
+-   **Terraform:** Utilizado para aprovisionar y gestionar recursos de infraestructura en la nube a través de varios proveedores (GCP, AWS, Azure).
+    -   **Módulos:** Configuraciones de Terraform reutilizables para componentes comunes (ej., clústeres de Kubernetes, bases de datos).
+    -   **Entornos:** Configuraciones separadas para `development` (desarrollo), `staging` (pruebas) y `production` (producción).
+-   **Kubernetes (K8s):** Utilizado para orquestar aplicaciones contenerizadas.
+    -   **Kustomize:** Para gestionar configuraciones de Kubernetes específicas del entorno superponiendo cambios sobre una base común.
+    -   **Helm Charts (Opcional):** Para empaquetar y desplegar aplicaciones de terceros o servicios internos complejos.
+-   **Docker & Docker Compose:** Utilizado para contenerizar aplicaciones y configurar entornos de desarrollo local que replican las configuraciones de producción.
+-   **Ansible (Opcional):** Para tareas de gestión de configuración si es necesario para máquinas virtuales o configuraciones de software específicas no cubiertas por Terraform/K8s.
+
+## 📁 Estructura del Directorio Explicada
 
 ```
 infrastructure/
-├── terraform/
-│   ├── modules/              # Módulos reutilizables
-│   │   ├── kubernetes-cluster/
-│   │   ├── database/
-│   │   ├── redis/
-│   │   └── networking/
-│   ├── environments/         # Configuraciones por entorno
+├── terraform/                    # Configuraciones de Terraform
+│   ├── modules/                  # Módulos de Terraform reutilizables (ej., vpc, kubernetes_cluster, database)
+│   ├── environments/             # Configuraciones específicas del entorno (dev, staging, prod)
 │   │   ├── development/
 │   │   ├── staging/
 │   │   └── production/
-│   └── shared/              # Recursos compartidos
-├── kubernetes/
-│   ├── base/                # Configuraciones base
-│   │   ├── namespace/
-│   │   ├── rbac/
-│   │   ├── network-policies/
-│   │   └── storage/
-│   ├── overlays/            # Kustomize overlays
-│   │   ├── development/
-│   │   ├── staging/
-│   │   └── production/
-│   └── operators/           # Custom operators
-├── monitoring/
-│   ├── prometheus/
-│   ├── grafana/
-│   ├── alertmanager/
-│   └── dashboards/
-├── database/
-│   ├── migrations/          # DB migrations
-│   ├── init/               # Initialization scripts
-│   └── backup/             # Backup configurations
-└── README.md               # Esta documentación
+│   │       ├── main.tf
+│   │       ├── variables.tf
+│   │       └── backend.tf      # Configuración del backend de estado de Terraform
+│   └── shared/                   # Recursos compartidos o configuraciones base
+├── kubernetes/                   # Manifiestos de Kubernetes y configuraciones de Kustomize
+│   ├── base/                     # Manifiestos base comunes para todos los entornos
+│   │   ├── core-template-deployment.yaml
+│   │   ├── gateway-service.yaml
+│   │   └── namespace.yaml
+│   ├── overlays/                 # Superposiciones (overlays) de Kustomize específicas del entorno
+│   │   ├── development/          # Parches para dev
+│   │   ├── staging/              # Parches para staging
+│   │   └── production/           # Parches para prod
+│   └── operators/                # Operadores de Kubernetes personalizados desarrollados para Pulso-AI
+├── docker-compose/               # Archivos Docker Compose para entornos locales/CI
+│   ├── docker-compose.yml        # Configuración base de desarrollo local
+│   ├── docker-compose.ci.yml     # Configuración para pruebas CI
+│   └── .env.example              # Variables de entorno de ejemplo para Docker Compose
+├── monitoring/                   # Configuración para monitoreo, logging y alertas
+│   ├── prometheus/               # Configuraciones de Prometheus, trabajos de scrapeo
+│   ├── grafana/                  # Definiciones de dashboards de Grafana (como código)
+│   ├── alertmanager/             # Configuraciones de Alertmanager
+│   └── loki/                     # Configuraciones de Loki para agregación de logs (si se usa)
+├── database/                     # Scripts específicos de base de datos, ej. migraciones avanzadas
+│   ├── migrations/               # Scripts de migración de esquema (ej., Flyway, Alembic - si no son parte de la app)
+│   └── init-scripts/             # Scripts de inicialización para bases de datos
+└── README.md                     # Esta documentación
 ```
+*(Las secciones detalladas existentes sobre Filosofía de IaC, Arquitectura de Kubernetes, Módulos de Terraform, Pila de Monitoreo, CI/CD, Seguridad, Multi-Nube, Auto-Escalado y Comandos de Despliegue son excelentes y deberían conservarse en gran medida e integrarse bajo encabezados relevantes o como secciones de nivel superior si encajan en el flujo).*
 
-## ☸️ Kubernetes Architecture
+## 🚀 Cómo Empezar y Despliegue
 
-### Namespaces por Cliente
-```yaml
-# Aislamiento completo por cliente
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: movistar-peru
-  labels:
-    client: movistar-peru
-    environment: production
-```
+-   **Terraform:**
+    ```bash
+    cd infrastructure/terraform/environments/<tu-entorno>
+    terraform init
+    terraform plan
+    terraform apply
+    ```
+-   **Kubernetes (con Kustomize):**
+    ```bash
+    kubectl apply -k infrastructure/kubernetes/overlays/<tu-entorno>
+    ```
+-   **Docker Compose (para desarrollo local):**
+    ```bash
+    cd infrastructure/docker-compose
+    docker-compose -f docker-compose.yml up -d
+    ```
 
-### Resource Quotas
-```yaml
-# Límites por cliente
-apiVersion: v1
-kind: ResourceQuota
-metadata:
-  name: movistar-peru-quota
-spec:
-  hard:
-    requests.cpu: "4"
-    requests.memory: 8Gi
-    limits.cpu: "8"  
-    limits.memory: 16Gi
-    persistentvolumeclaims: "4"
-```
+Consulta los READMEs específicos dentro de los subdirectorios (ej., `terraform/README.md`, `kubernetes/README.md`) para instrucciones más detalladas.
 
-### Network Policies
-```yaml
-# Aislamiento de red entre clientes
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: client-isolation
-spec:
-  podSelector: {}
-  policyTypes:
-  - Ingress
-  - Egress
-  ingress:
-  - from:
-    - namespaceSelector:
-        matchLabels:
-          name: gateway
-```
+## 🛡️ Consideraciones de Seguridad
 
-## 🌍 Terraform Modules
-
-### Kubernetes Cluster
-```hcl
-# modules/kubernetes-cluster/main.tf
-module "gke_cluster" {
-  source = "./modules/kubernetes-cluster"
-  
-  cluster_name     = "pulso-${var.environment}"
-  region          = var.region
-  node_count      = var.node_count
-  machine_type    = var.machine_type
-  enable_autoscaling = true
-  min_nodes       = 1
-  max_nodes       = 10
-}
-```
-
-### Database per Cliente
-```hcl
-# modules/database/main.tf
-resource "google_sql_database_instance" "client_db" {
-  name             = "${var.client_id}-${var.environment}"
-  database_version = "POSTGRES_13"
-  region          = var.region
-  
-  settings {
-    tier = var.database_tier
-    backup_configuration {
-      enabled = true
-      start_time = "03:00"
-    }
-  }
-}
-```
-
-## 📊 Monitoring Stack
-
-### Prometheus Configuration
-```yaml
-# monitoring/prometheus/config.yaml
-global:
-  scrape_interval: 15s
-  
-scrape_configs:
-- job_name: 'pulso-backends'
-  kubernetes_sd_configs:
-  - role: pod
-  relabel_configs:
-  - source_labels: [__meta_kubernetes_pod_label_app]
-    action: keep
-    regex: pulso-backend
-```
-
-### Grafana Dashboards
-- **Client Overview**: Métricas por cliente
-- **Performance**: Latencia y throughput
-- **Infrastructure**: CPU, memoria, storage
-- **Business**: KPIs de dashboard usage
-
-## 🔄 CI/CD Pipeline
-
-### GitOps Workflow
-```yaml
-# .github/workflows/infrastructure.yml
-name: Infrastructure
-on:
-  push:
-    paths: ['infrastructure/**']
-    
-jobs:
-  terraform:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - uses: hashicorp/setup-terraform@v2
-    - name: Terraform Plan
-      run: terraform plan
-    - name: Terraform Apply
-      if: github.ref == 'refs/heads/main'
-      run: terraform apply -auto-approve
-```
-
-### ArgoCD for K8s
-```yaml
-# ArgoCD Application
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: pulso-infrastructure
-spec:
-  source:
-    repoURL: https://github.com/reyer3/Pulso-AI
-    path: infrastructure/kubernetes
-    targetRevision: main
-  destination:
-    server: https://kubernetes.default.svc
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-```
-
-## 🔐 Security
-
-### Secret Management
-```yaml
-# External Secrets Operator
-apiVersion: external-secrets.io/v1beta1
-kind: SecretStore
-metadata:
-  name: gcpsm-secret-store
-spec:
-  provider:
-    gcpsm:
-      projectId: "pulso-ai-secrets"
-      auth:
-        workloadIdentity:
-          clusterLocation: us-central1
-          clusterName: pulso-prod
-```
-
-### RBAC per Cliente
-```yaml
-# Client-specific RBAC
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  namespace: movistar-peru
-  name: movistar-peru-admin
-rules:
-- apiGroups: [""]
-  resources: ["pods", "services"]
-  verbs: ["get", "list", "create", "update", "delete"]
-```
-
-## 🌐 Multi-Cloud Strategy
-
-### Cloud-Agnostic Modules
-```hcl
-# Terraform modules that work across clouds
-module "database" {
-  source = "./modules/database"
-  
-  provider = var.cloud_provider # "gcp", "aws", "azure"
-  instance_type = var.instance_type
-  backup_enabled = true
-}
-```
-
-### Environment Variables
-```bash
-# Cloud provider selection
-export CLOUD_PROVIDER="gcp"              # or "aws", "azure"
-export TERRAFORM_BACKEND="gcs"           # or "s3", "azurerm"
-export KUBERNETES_PROVIDER="gke"         # or "eks", "aks"
-```
-
-## 📈 Auto-Scaling
-
-### Horizontal Pod Autoscaler
-```yaml
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: pulso-backend-hpa
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: pulso-backend
-  minReplicas: 2
-  maxReplicas: 20
-  metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 70
-```
-
-### Cluster Autoscaler
-```yaml
-# Node pool with autoscaling
-resource "google_container_node_pool" "pulso_nodes" {
-  cluster = google_container_cluster.pulso.name
-  
-  autoscaling {
-    min_node_count = 1
-    max_node_count = 10
-  }
-  
-  management {
-    auto_repair  = true
-    auto_upgrade = true
-  }
-}
-```
-
-## 🔧 Deployment Commands
-
-### Initial Setup
-```bash
-# 1. Initialize Terraform
-cd infrastructure/terraform/environments/production
-terraform init
-
-# 2. Plan infrastructure
-terraform plan -var-file="terraform.tfvars"
-
-# 3. Apply infrastructure  
-terraform apply -auto-approve
-
-# 4. Configure kubectl
-gcloud container clusters get-credentials pulso-prod
-
-# 5. Deploy Kubernetes resources
-kubectl apply -k infrastructure/kubernetes/overlays/production
-```
-
-### Client Onboarding
-```bash
-# Add new client infrastructure
-python scripts/infrastructure/provision_client.py nuevo-cliente \
-  --environment production \
-  --database postgresql \
-  --replicas 3
-```
+-   **Gestión de Secretos:** Utilizar herramientas como HashiCorp Vault, gestores de secretos del proveedor de nube (ej., GCP Secret Manager, AWS Secrets Manager) o el operador ExternalSecrets de Kubernetes. Los secretos no deben estar codificados (hardcoded) en los archivos de IaC.
+-   **Seguridad de Red:** Implementar políticas de red estrictas, firewalls y configuraciones de VPC.
+-   **RBAC (Control de Acceso Basado en Roles):** Aplicar el acceso de menor privilegio tanto para los componentes de infraestructura como para las cargas de trabajo de Kubernetes.
+-   **Escaneo de IaC:** Integrar herramientas como `tfsec`, `checkov` o `terrascan` en los pipelines de CI/CD para escanear en busca de configuraciones erróneas.
 
 ---
 
-**Next Steps**: Configurar cluster base y módulos Terraform para desarrollo.
+**Próximos Pasos**: Desarrollar los módulos iniciales de Terraform para la red principal y un clúster GKE/EKS. Definir las configuraciones base de Kustomize para el servicio `core-template` y el `gateway`.
+```

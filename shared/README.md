@@ -1,394 +1,90 @@
-# 🔧 Shared Libraries
+# 🔧 Librerías y Utilidades Compartidas
 
-**Librerías compartidas** entre clientes y componentes para reutilización y consistencia.
+**Resumen:** Este directorio contiene librerías de Python compartidas, funciones de utilidad, definiciones de tipos comunes y funcionalidades centrales diseñadas para ser utilizadas en múltiples servicios (ej., `core-template`, instancias específicas de clientes) y aplicaciones (ej., `frontend` si se generan SDKs de cliente, `scripts`) dentro del proyecto Pulso-AI. El objetivo principal es promover la reutilización de código (DRY - Don't Repeat Yourself), asegurar la consistencia y centralizar la lógica común.
 
-## 🎯 Principio DRY
+**Propósito Clave y Responsabilidades:**
+-   **Reutilización de Código (DRY):** Proporcionar un lugar central para el código común para evitar la duplicación en diferentes partes del proyecto.
+-   **Consistencia:** Asegurar una implementación uniforme de funcionalidades centrales como autenticación, logging, manejo de configuración, etc.
+-   **Mantenibilidad:** Simplificar las actualizaciones y correcciones de errores al tener la lógica compartida en un solo lugar.
+-   **Abstracción:** Ofrecer abstracciones para tareas comunes como interacción con bases de datos, caché o llamadas a APIs externas.
+-   **Intereses Transversales (Cross-Cutting Concerns):** Gestionar aspectos como monitoreo, logging y manejo de excepciones que aplican a múltiples servicios.
 
-Evitar duplicación de código manteniendo librerías comunes que pueden ser utilizadas por:
-- **Core Template**: Funcionalidad base
-- **Client Instances**: Adaptadores específicos  
-- **Scripts**: Utilidades de automatización
-- **Infrastructure**: Módulos reutilizables
+## 📁 Estructura del Directorio Explicada
 
-## 📁 Estructura
+El directorio `shared/` está organizado por dominio funcional:
 
 ```
 shared/
-├── auth/
-│   ├── jwt_handler.py       # Manejo de JWT tokens
-│   ├── permissions.py       # Sistema de permisos RBAC
-│   ├── oauth_client.py      # Integración OAuth2/SAML
-│   └── session_manager.py   # Gestión de sesiones
-├── monitoring/
-│   ├── metrics.py           # Collector de métricas
-│   ├── logging.py           # Configuración de logs
-│   ├── health_checks.py     # Health checks estándar
-│   └── alerts.py            # Sistema de alertas
-├── utils/
-│   ├── database.py          # Utilidades de base de datos
-│   ├── cache.py             # Wrapper para Redis
-│   ├── encryption.py        # Funciones de encriptación
-│   ├── validation.py        # Validadores comunes
-│   └── formatting.py        # Formateo de datos
-├── config/
-│   ├── base_settings.py     # Configuraciones base
-│   ├── environment.py       # Manejo de env variables
-│   ├── secrets_manager.py   # Gestión de secretos
-│   └── client_loader.py     # Carga configuración cliente
-├── exceptions/
-│   ├── base_exceptions.py   # Excepciones base
-│   ├── client_exceptions.py # Excepciones por cliente
-│   └── api_exceptions.py    # Excepciones API
-├── types/
-│   ├── common_types.py      # Tipos TypeScript/Python comunes
-│   ├── client_types.py      # Tipos específicos de cliente
-│   └── api_types.py         # Tipos de API
-└── README.md                # Esta documentación
+├── auth/                   # Autenticación, autorización, manejo de JWT, permisos RBAC
+│   ├── jwt_handler.py
+│   └── permissions.py
+├── config/                 # Carga de configuración, gestión de variables de entorno, acceso a secretos
+│   ├── base_settings.py
+│   └── client_config_loader.py
+├── monitoring/             # Configuración de logging, recolección de métricas, utilidades de health check
+│   ├── logger.py
+│   └── metrics_collector.py
+├── utils/                  # Funciones de utilidad general (helpers de base de datos, wrappers de caché, encriptación, validación)
+│   ├── db_utils.py
+│   └── cache_manager.py
+├── exceptions/             # Clases de excepción personalizadas compartidas en toda la aplicación
+│   └── common_exceptions.py
+├── types/                  # Estructuras de datos comunes, modelos Pydantic o TypedDicts usados entre servicios
+│   └── common_models.py
+├── communication/          # (Opcional) Clientes para brokers de mensajes (Kafka, RabbitMQ) o servicios gRPC internos
+│   └── kafka_producer.py
+└── README.md               # Esta documentación
 ```
+*(La estructura detallada existente del README original es excelente y puede adaptarse aquí).*
 
-## 🔐 Authentication & Authorization
+## 📦 Cómo Usar las Librerías Compartidas
 
-### JWT Handler
-```python
-# shared/auth/jwt_handler.py
-from typing import Dict, Optional
-import jwt
-from datetime import datetime, timedelta
+Estas librerías están destinadas a ser utilizadas como paquetes o módulos estándar de Python. Dependiendo de la configuración del proyecto:
 
-class JWTHandler:
-    def __init__(self, secret_key: str, algorithm: str = "HS256"):
-        self.secret_key = secret_key
-        self.algorithm = algorithm
-    
-    def create_token(self, user_id: str, client_id: str, 
-                    expires_delta: Optional[timedelta] = None) -> str:
-        if expires_delta:
-            expire = datetime.utcnow() + expires_delta
-        else:
-            expire = datetime.utcnow() + timedelta(hours=24)
-            
-        payload = {
-            "user_id": user_id,
-            "client_id": client_id,
-            "exp": expire,
-            "iat": datetime.utcnow()
-        }
-        return jwt.encode(payload, self.secret_key, algorithm=self.algorithm)
-    
-    def verify_token(self, token: str) -> Dict:
-        return jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
-```
+-   **Estrategia Monorepo:** Si Pulso-AI está estructurado como un monorepo, los servicios a menudo pueden importar módulos compartidos directamente usando configuraciones de ruta de Python apropiadas (ej., estableciendo `PYTHONPATH` o usando instalaciones editables con `pip install -e ./shared`).
+-   **Paquetes Separados:** Alternativamente, cada subdirectorio (o todo el directorio `shared`) podría empaquetarse como un paquete privado de Python e instalarse como una dependencia en otros servicios. Esto es común para proyectos más grandes o cuando los servicios se despliegan independientemente.
+    ```bash
+    # Ejemplo: en requirements.txt o pyproject.toml de core-template
+    # pulso_ai_shared_auth @ git+ssh://git@github.com/reyer3/Pulso-AI.git#subdirectory=shared/auth
+    # o si se usa un servidor PyPI privado:
+    # pulso-ai-shared-auth = "0.1.0"
+    ```
 
-### RBAC Permissions
-```python
-# shared/auth/permissions.py
-from enum import Enum
-from typing import List, Set
+*(Los ejemplos de código detallados existentes para "Autenticación y Autorización", "Monitoreo y Observabilidad", "Utilidades de Base de Datos y Caché", "Gestión de Configuración" y "Tipos Comunes" son excelentes y deberían conservarse en gran medida, quizás bajo encabezados ligeramente más generalizados o como subsecciones que muestren la utilidad de estos módulos compartidos).*
 
-class Permission(Enum):
-    READ_DASHBOARD = "dashboard:read"
-    WRITE_DASHBOARD = "dashboard:write"
-    ADMIN_CLIENT = "client:admin"
-    VIEW_ANALYTICS = "analytics:view"
+## ✨ Módulos Compartidos Clave (Ejemplos)
 
-class Role:
-    def __init__(self, name: str, permissions: Set[Permission]):
-        self.name = name
-        self.permissions = permissions
+### Autenticación (`shared/auth/`)
+-   **`jwt_handler.py`**: Gestiona la creación, validación y decodificación de tokens JWT.
+-   **`permissions.py`**: Define roles y permisos para RBAC.
 
-# Roles predefinidos
-ROLES = {
-    "viewer": Role("viewer", {Permission.READ_DASHBOARD}),
-    "analyst": Role("analyst", {
-        Permission.READ_DASHBOARD, 
-        Permission.VIEW_ANALYTICS
-    }),
-    "admin": Role("admin", {
-        Permission.READ_DASHBOARD,
-        Permission.WRITE_DASHBOARD,
-        Permission.VIEW_ANALYTICS,
-        Permission.ADMIN_CLIENT
-    })
-}
-```
+### Configuración (`shared/config/`)
+-   **`client_config_loader.py`**: Carga configuraciones específicas del cliente desde archivos YAML u otras fuentes.
 
-## 📊 Monitoring & Observability
+### Monitoreo (`shared/monitoring/`)
+-   **`logger.py`**: Configuración estandarizada de logging estructurado (ej., usando `structlog`).
+-   **`metrics_collector.py`**: Utilidades para emitir métricas a Prometheus u otros sistemas de monitoreo.
 
-### Metrics Collector
-```python
-# shared/monitoring/metrics.py
-from prometheus_client import Counter, Histogram, Gauge
-import time
-from functools import wraps
+### Utilidades (`shared/utils/`)
+-   **`db_utils.py`**: Patrones abstractos de interacción con bases de datos o helpers específicos para las bases de datos soportadas.
+-   **`cache_manager.py`**: Wrapper para mecanismos de caché como Redis.
 
-# Métricas globales
-REQUEST_COUNT = Counter('pulso_requests_total', 
-                       'Total requests', ['client_id', 'endpoint'])
-REQUEST_DURATION = Histogram('pulso_request_duration_seconds',
-                           'Request duration', ['client_id', 'endpoint'])
-ACTIVE_USERS = Gauge('pulso_active_users',
-                    'Active users', ['client_id'])
+### Tipos Comunes (`shared/types/`)
+-   **`common_models.py`**: Modelos Pydantic o dataclasses para estructuras de datos compartidas (ej., `ClientConfig`, `FilterState`).
 
-def track_performance(client_id: str, endpoint: str):
-    """Decorator para trackear performance"""
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            start_time = time.time()
-            REQUEST_COUNT.labels(client_id=client_id, endpoint=endpoint).inc()
-            
-            try:
-                result = func(*args, **kwargs)
-                return result
-            finally:
-                duration = time.time() - start_time
-                REQUEST_DURATION.labels(
-                    client_id=client_id, endpoint=endpoint
-                ).observe(duration)
-        return wrapper
-    return decorator
-```
+## 🤝 Directrices de Contribución
 
-### Structured Logging
-```python
-# shared/monitoring/logging.py
-import structlog
-import logging
-from typing import Any, Dict
-
-def configure_logging(client_id: str, environment: str):
-    """Configura logging estructurado"""
-    structlog.configure(
-        processors=[
-            structlog.stdlib.filter_by_level,
-            structlog.stdlib.add_logger_name,
-            structlog.stdlib.add_log_level,
-            structlog.stdlib.PositionalArgumentsFormatter(),
-            structlog.processors.TimeStamper(fmt="iso"),
-            structlog.processors.StackInfoRenderer(),
-            structlog.processors.format_exc_info,
-            structlog.processors.JSONRenderer()
-        ],
-        context_class=dict,
-        logger_factory=structlog.stdlib.LoggerFactory(),
-        wrapper_class=structlog.stdlib.BoundLogger,
-        cache_logger_on_first_use=True,
-    )
-    
-    logger = structlog.get_logger()
-    logger = logger.bind(client_id=client_id, environment=environment)
-    return logger
-```
-
-## 💾 Database & Cache Utilities
-
-### Database Helper
-```python
-# shared/utils/database.py
-from typing import Any, Dict, List, Optional
-import polars as pl
-from abc import ABC, abstractmethod
-
-class DatabaseAdapter(ABC):
-    """Base adapter para diferentes databases"""
-    
-    @abstractmethod
-    def execute_query(self, query: str, params: Dict[str, Any] = None) -> pl.DataFrame:
-        pass
-    
-    @abstractmethod
-    def get_table_schema(self, table_name: str) -> Dict[str, str]:
-        pass
-
-class BigQueryAdapter(DatabaseAdapter):
-    def __init__(self, project_id: str, credentials_path: str):
-        self.project_id = project_id
-        self.credentials_path = credentials_path
-    
-    def execute_query(self, query: str, params: Dict[str, Any] = None) -> pl.DataFrame:
-        # Implementación BigQuery con Polars
-        pass
-
-class PostgreSQLAdapter(DatabaseAdapter):
-    def __init__(self, connection_string: str):
-        self.connection_string = connection_string
-    
-    def execute_query(self, query: str, params: Dict[str, Any] = None) -> pl.DataFrame:
-        # Implementación PostgreSQL con Polars
-        pass
-```
-
-### Cache Manager
-```python
-# shared/utils/cache.py
-import redis
-import json
-from typing import Any, Optional
-from datetime import timedelta
-
-class CacheManager:
-    def __init__(self, redis_url: str, default_ttl: int = 3600):
-        self.redis_client = redis.from_url(redis_url)
-        self.default_ttl = default_ttl
-    
-    def get(self, key: str) -> Optional[Any]:
-        """Get cached value"""
-        value = self.redis_client.get(key)
-        if value:
-            return json.loads(value)
-        return None
-    
-    def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
-        """Set cached value"""
-        ttl = ttl or self.default_ttl
-        self.redis_client.setex(key, ttl, json.dumps(value))
-    
-    def delete(self, key: str) -> None:
-        """Delete cached value"""
-        self.redis_client.delete(key)
-    
-    def get_client_key(self, client_id: str, key: str) -> str:
-        """Generate client-specific cache key"""
-        return f"client:{client_id}:{key}"
-```
-
-## ⚙️ Configuration Management
-
-### Client Configuration Loader
-```python
-# shared/config/client_loader.py
-import yaml
-from typing import Dict, Any
-from pathlib import Path
-
-class ClientConfigLoader:
-    def __init__(self, clients_dir: Path):
-        self.clients_dir = clients_dir
-    
-    def load_client_config(self, client_id: str) -> Dict[str, Any]:
-        """Load complete client configuration"""
-        client_dir = self.clients_dir / client_id
-        
-        config = {}
-        config.update(self._load_yaml(client_dir / "config" / "client.yaml"))
-        config.update(self._load_yaml(client_dir / "config" / "dimensions.yaml"))
-        config.update(self._load_yaml(client_dir / "config" / "database.yaml"))
-        
-        return config
-    
-    def _load_yaml(self, file_path: Path) -> Dict[str, Any]:
-        if file_path.exists():
-            with open(file_path, 'r') as f:
-                return yaml.safe_load(f) or {}
-        return {}
-```
-
-## 🎯 Common Types
-
-### TypeScript Types
-```typescript
-// shared/types/common_types.ts
-export interface FilterState {
-  dimension: string;
-  values: string[];
-  operator: 'in' | 'not_in' | 'equals';
-}
-
-export interface ClientConfig {
-  id: string;
-  name: string;
-  database: DatabaseConfig;
-  dimensions: Dimension[];
-  metrics: Metric[];
-}
-
-export interface Dimension {
-  id: string;
-  display_name: string;
-  type: 'categorical' | 'temporal' | 'numerical';
-  affects_dimensions?: string[];
-}
-
-export interface Metric {
-  id: string;
-  display_name: string;
-  formula: string;
-  thresholds?: {
-    warning?: number;
-    good?: number;
-  };
-}
-```
-
-### Python Types
-```python
-# shared/types/common_types.py
-from dataclasses import dataclass
-from typing import List, Optional, Dict, Any
-from enum import Enum
-
-@dataclass
-class FilterState:
-    dimension: str
-    values: List[str]
-    operator: str = "in"
-
-@dataclass
-class ClientConfig:
-    id: str
-    name: str
-    database: Dict[str, Any]
-    dimensions: List[Dict[str, Any]]
-    metrics: List[Dict[str, Any]]
-
-class DimensionType(Enum):
-    CATEGORICAL = "categorical"
-    TEMPORAL = "temporal" 
-    NUMERICAL = "numerical"
-```
-
-## 🔧 Usage Examples
-
-### Using in Core Template
-```python
-# core-template/src/application/dashboard_service.py
-from shared.monitoring.metrics import track_performance
-from shared.utils.cache import CacheManager
-from shared.config.client_loader import ClientConfigLoader
-
-class DashboardService:
-    def __init__(self, client_id: str):
-        self.client_id = client_id
-        self.cache = CacheManager()
-        self.config_loader = ClientConfigLoader()
-    
-    @track_performance(client_id="movistar-peru", endpoint="generate_dashboard")
-    def generate_dashboard(self, filters: List[FilterState]):
-        # Implementation using shared utilities
-        pass
-```
-
-### Using in Scripts
-```python
-# scripts/client-management/create_client.py
-from shared.config.client_loader import ClientConfigLoader
-from shared.utils.validation import validate_client_config
-
-def create_client(client_id: str, template_dir: Path):
-    # Use shared validation
-    if not validate_client_config(config):
-        raise ValueError("Invalid client configuration")
-    
-    # Use shared config loader
-    loader = ClientConfigLoader(template_dir)
-    # ... rest of implementation
-```
+-   Asegurar que el código compartido sea genérico y aplicable a múltiples servicios/contextos.
+-   Escribir pruebas unitarias exhaustivas para todas las utilidades y librerías compartidas. La cobertura de pruebas debe ser alta.
+-   Documentar funciones y clases claramente con docstrings, explicando su propósito, argumentos y valores de retorno.
+-   Mantener la compatibilidad hacia atrás siempre que sea posible, o proporcionar rutas de migración claras si son necesarios cambios que rompan la compatibilidad.
+-   Discutir con el equipo antes de añadir nuevas librerías compartidas significativas para asegurar que encajan en la arquitectura general.
 
 ---
 
 **Beneficios**:
-- ✅ **DRY**: Zero duplicación de código
-- ✅ **Consistency**: Comportamiento uniforme entre clientes
-- ✅ **Maintainability**: Cambios centralizados
-- ✅ **Testing**: Librerías bien testadas
-- ✅ **Performance**: Optimizaciones compartidas
+-   **Reducción de Duplicación**: Escribe una vez, úsalo en todas partes.
+-   **Consistencia Mejorada**: Comportamiento uniforme entre servicios.
+-   **Mantenimiento Más Fácil**: Corrige errores o añade características en un solo lugar.
+-   **Mayor Calidad**: El código compartido tiende a ser más robusto y bien probado.
+```

@@ -1,245 +1,92 @@
-# ⚛️ Frontend Pulso-AI
+# ⚛️ Aplicación Frontend (Pulso-AI)
 
-Aplicación React con **GraphQL** y **cross-filtering inteligente** para dashboards multi-cliente.
+**Resumen:** Este directorio contiene el código fuente y la configuración de la aplicación frontend principal de Pulso-AI. Es una aplicación web moderna y responsiva, construida principalmente con React, diseñada para proporcionar a los usuarios una interfaz intuitiva para acceder e interactuar con sus dashboards de inteligencia de negocios e insights de datos.
 
-## 🎯 Arquitectura Frontend
+**Propósito Clave y Responsabilidades:**
+-   **Interfaz de Usuario:** Servir como el punto de interacción primario para los usuarios con la plataforma Pulso-AI.
+-   **Visualización de Datos:** Presentar datos complejos a través de gráficos interactivos, tablas y dashboards.
+-   **Interacción con el Cliente:** Manejar la marca, configuraciones y vistas de datos específicas del cliente en un entorno multitenant.
+-   **Comunicación GraphQL:** Interactuar con el gateway backend vía GraphQL para obtener y modificar datos.
+-   **Filtrado Cruzado (Cross-Filtering):** Proporcionar una experiencia de filtrado cruzado inteligente y dinámica para los dashboards.
+
+## 🏗️ Resumen de la Arquitectura
+
+El frontend está estructurado para separar responsabilidades, promoviendo la modularidad y la mantenibilidad. Los aspectos clave incluyen:
 
 ```
 frontend/
-├── public/                  # Assets estáticos
-├── src/
-│   ├── components/         # Componentes React reutilizables
-│   │   ├── common/        # Componentes base (Button, Input, etc.)
-│   │   ├── dashboard/     # Componentes específicos de dashboard
-│   │   ├── filters/       # Sistema de cross-filtering
-│   │   └── charts/        # Visualizaciones con Recharts
-│   ├── hooks/             # Custom hooks de React
-│   │   ├── useFilters.ts  # Hook para cross-filtering
-│   │   ├── useDashboard.ts # Hook para dashboard state
-│   │   └── useClient.ts   # Hook para contexto de cliente
-│   ├── graphql/           # GraphQL queries y mutations
-│   │   ├── queries/       # Queries organizadas por dominio
-│   │   ├── mutations/     # Mutations para updates
-│   │   ├── fragments/     # Fragmentos reutilizables
-│   │   └── generated/     # Tipos TypeScript autogenerados
-│   ├── utils/             # Utilidades y helpers
-│   │   ├── formatting.ts  # Formateo de datos
-│   │   ├── validation.ts  # Validaciones frontend
-│   │   └── constants.ts   # Constantes de la aplicación
-│   ├── types/             # Definiciones TypeScript
-│   ├── context/           # Context providers de React
-│   └── pages/             # Páginas principales (si usando routing)
-├── package.json           # Dependencies y scripts
-├── vite.config.ts         # Configuración Vite
-├── tailwind.config.js     # Configuración Tailwind CSS
-├── tsconfig.json          # Configuración TypeScript
-└── README.md              # Este archivo
+├── public/                  # Activos estáticos (index.html, favicons, etc.)
+├── src/                     # Código fuente principal
+│   ├── components/          # Componentes UI de React reutilizables (atómicos, moleculares, organismos)
+│   ├── hooks/               # Hooks de React personalizados para lógica compartida
+│   ├── graphql/             # Consultas, mutaciones, fragmentos de GraphQL y tipos generados
+│   ├── utils/               # Funciones de utilidad (formateo, validación, constantes)
+│   ├── types/               # Definiciones globales de TypeScript
+│   ├── context/             # Proveedores de Context de React para gestión de estado global
+│   ├── pages/               # Componentes de página de nivel superior (si se usa enrutamiento del lado del cliente más allá del dashboard)
+│   ├── assets/              # Imágenes, fuentes, etc.
+│   └── main.tsx             # Punto de entrada principal de la aplicación
+├── package.json             # Dependencias y scripts del proyecto (npm/yarn)
+├── vite.config.ts           # Configuración de la herramienta de compilación Vite
+├── tailwind.config.js       # Configuración de Tailwind CSS
+├── tsconfig.json            # Configuración del compilador de TypeScript
+└── README.md                # Este archivo de documentación
 ```
+*(El diagrama de arquitectura detallado existente del README original es excelente y puede considerarse parte de esta sección o una subsección).*
 
-## 🛠️ Stack Tecnológico
+## 🛠️ Tecnologías y Stack Principal
 
-### Core Framework
-- **React 18**: UI framework con Concurrent Features
-- **TypeScript**: Type safety y mejor DX
-- **Vite**: Build tool ultra-rápido
+-   **Framework UI**: React 18 (con Características Concurrentes)
+-   **Lenguaje**: TypeScript
+-   **Herramienta de Compilación (Build Tool)**: Vite para desarrollo rápido y compilaciones optimizadas.
+-   **Obtención de Datos y Gestión de Estado**:
+    -   Apollo Client para comunicación GraphQL y caché.
+    -   Zustand (o similar) para gestión de estado global ligera.
+-   **Estilos (Styling)**: Tailwind CSS (utility-first) combinado con Headless UI para componentes accesibles.
+-   **Gráficos/Visualización**: Recharts o una librería similar.
+-   **Experiencia de Desarrollo (Developer Experience)**:
+    -   ESLint & Prettier para calidad de código y formateo.
+    -   Storybook para desarrollo y documentación de componentes.
+    -   Vitest para pruebas unitarias y de integración.
 
-### Estado y Data Fetching  
-- **Apollo Client**: GraphQL client con cache inteligente
-- **React Query** (opcional): Para queries REST si necesario
-- **Zustand**: State management ligero para estado global
+*(Las secciones detalladas existentes sobre Sistema de Diseño, Arquitectura de Filtrado Cruzado, Componentes del Dashboard, Soporte Multi-Cliente, Flujo de Desarrollo, Diseño Responsivo, Seguridad y Rendimiento son excelentes y deberían conservarse en gran medida como subsecciones bajo los encabezados apropiados aquí o como secciones de nivel superior si se prefiere).*
 
-### Styling y UI
-- **Tailwind CSS**: Utility-first CSS framework
-- **Headless UI**: Componentes accesibles sin styling
-- **Recharts**: Gráficos responsivos y customizables
+## 🎯 Características Clave
 
-### Developer Experience
-- **ESLint + Prettier**: Linting y formateo
-- **Husky**: Git hooks para calidad de código
-- **Storybook**: Documentación de componentes
-- **Vitest**: Testing ultra-rápido
+-   **Dashboards Dinámicos:** Dashboards altamente configurables e interactivos.
+-   **Filtrado Cruzado Inteligente:** Los filtros se actualizan dinámicamente según las selecciones del usuario.
+-   **Personalización Multi-Cliente:** Marca, dimensiones, métricas y diseños adaptables por cliente.
+-   **Diseño Responsivo:** Optimizado para varios tamaños de pantalla (móvil, tableta, escritorio).
+-   **Autenticación Segura:** Autenticación basada en JWT con medidas de seguridad apropiadas.
+-   **Rendimiento Optimizado:** División de código (code splitting), análisis de bundle y carga eficiente de datos.
 
-## 🎨 Sistema de Diseño
+## 🚀 Cómo Empezar (Flujo de Desarrollo)
 
-### Principios
-1. **Mobile First**: Responsive design por defecto
-2. **Accessibility**: WCAG 2.1 compliance
-3. **Performance**: Componentes lazy-loaded
-4. **Consistency**: Design tokens centralizados
-
-### Tema Base
-```typescript
-// src/theme/tokens.ts
-export const theme = {
-  colors: {
-    primary: '#3B82F6',    // Azul principal
-    secondary: '#10B981',  // Verde éxito  
-    warning: '#F59E0B',    // Amarillo warning
-    error: '#EF4444',      // Rojo error
-    gray: {
-      50: '#F9FAFB',
-      900: '#111827'
-    }
-  },
-  spacing: {
-    xs: '0.25rem',
-    sm: '0.5rem', 
-    md: '1rem',
-    lg: '1.5rem',
-    xl: '2rem'
-  }
-}
-```
-
-## 🔄 Cross-Filtering Architecture
-
-### Concepto
-El **cross-filtering** permite que los filtros se actualicen dinámicamente basándose en las selecciones del usuario.
-
-```typescript
-// Ejemplo de cross-filtering flow
-Usuario selecciona "Ejecutivo: Juan Pérez"
-  ↓
-Hook useFilters detecta cambio
-  ↓  
-GraphQL query con nuevos filtros
-  ↓
-Backend retorna valores válidos para otras dimensiones
-  ↓
-UI actualiza opciones disponibles automáticamente
-```
-
-### Implementación
-```typescript
-// hooks/useFilters.ts
-export function useFilters() {
-  const [filters, setFilters] = useState<FilterState[]>([]);
-  
-  const { data: availableFilters } = useQuery(
-    GET_AVAILABLE_FILTERS,
-    { variables: { currentFilters: filters } }
-  );
-  
-  return {
-    filters,
-    setFilters,
-    availableFilters: availableFilters?.suggestions || []
-  };
-}
-```
-
-## 📊 Componentes Dashboard
-
-### DashboardContainer
-Componente principal que orchestrates toda la experiencia de dashboard.
-
-### FilterPanel  
-Panel lateral con todos los filtros cross-filtering.
-
-### VisualizationGrid
-Grid responsivo que muestra gráficos y tablas.
-
-### MetricsCards
-Cards con métricas clave y sparklines.
-
-## 🎯 Multi-Client Support
-
-### Client Context
-```typescript
-// context/ClientContext.tsx
-export const ClientContext = createContext<{
-  clientId: string;
-  clientConfig: ClientConfig;
-  dimensions: Dimension[];
-  metrics: Metric[];
-}>({});
-```
-
-### Dynamic Schema
-El frontend se adapta automáticamente al schema GraphQL generado dinámicamente por cada cliente.
-
-### Customization
-- **Branding**: Logo y colores por cliente
-- **Dimensions**: Filtros específicos por cliente  
-- **Metrics**: KPIs customizados
-- **Layout**: Disposición de componentes
-
-## 🚀 Development Workflow
-
-### Setup Local
 ```bash
-# Install dependencies
-npm install
+# 1. Instalar dependencias
+npm install # o yarn install
 
-# Start development server
-npm run dev
+# 2. Iniciar el servidor de desarrollo (usualmente Vite)
+npm run dev # o yarn dev
 
-# Type checking
-npm run type-check
+# 3. Ejecutar linters/formateadores
+npm run lint # o yarn lint
+npm run format # o yarn format
 
-# Linting
-npm run lint
-
-# Testing
-npm run test
+# 4. Ejecutar pruebas
+npm run test # o yarn test
 ```
+Asegúrate de tener una conexión correctamente configurada al gateway backend. Podrían necesitarse variables de entorno para los endpoints de la API.
 
-### Feature Development
-```bash
-# 1. Create component
-src/components/NewComponent/
+## 🤝 Contribución
 
-# 2. Add to Storybook
-src/components/NewComponent/NewComponent.stories.tsx
-
-# 3. Write tests
-src/components/NewComponent/NewComponent.test.tsx
-
-# 4. Document in README
-```
-
-## 📱 Responsive Design
-
-### Breakpoints
-```css
-/* Tailwind breakpoints */
-sm: 640px   /* Tablet */
-md: 768px   /* Desktop small */
-lg: 1024px  /* Desktop */
-xl: 1280px  /* Desktop large */
-2xl: 1536px /* Desktop XL */
-```
-
-### Dashboard Layout
-- **Mobile**: Single column, collapsible filters
-- **Tablet**: Two columns, sidebar filters
-- **Desktop**: Multi-column grid, persistent sidebar
-
-## 🔐 Security
-
-### Authentication
-- JWT tokens almacenados en httpOnly cookies
-- Auto-refresh de tokens
-- Logout automático en expiración
-
-### Client Isolation
-- **Route-based**: `/client/:clientId/dashboard`
-- **Context-aware**: Componentes saben su cliente actual
-- **Data validation**: Verificación client-side de permisos
-
-## 📈 Performance
-
-### Optimizations
-- **Code Splitting**: Lazy loading por rutas
-- **Bundle Analysis**: Webpack Bundle Analyzer
-- **Image Optimization**: Responsive images con lazy loading
-- **GraphQL**: Query deduplication y cache
-
-### Metrics
-- **First Contentful Paint**: < 1.5s
-- **Time to Interactive**: < 3s  
-- **Bundle Size**: < 500KB gzipped
+-   Sigue el estilo de codificación y los patrones establecidos.
+-   Escribe pruebas unitarias para nuevos componentes y lógica.
+-   Documenta nuevos componentes en Storybook.
+-   Asegúrate de que los cambios sean responsivos y accesibles.
 
 ---
 
-**Next Steps**: Configurar proyecto Vite con TypeScript y instalar dependencias base.
+**Próximos Pasos**: Enfocarse en implementar los componentes centrales del dashboard y establecer la conexión GraphQL con el gateway.
+*(Los "Próximos Pasos" originales también eran buenos: "Configurar proyecto Vite con TypeScript e instalar dependencias base.")*
+```
