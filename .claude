@@ -1,0 +1,241 @@
+# Claude Context for Pulso-AI Project
+
+## 🎯 Project Origin & Context
+
+### The Real Problem
+This project was born from a real conversation with a developer facing a critical business challenge:
+
+**Original Issue**: Client has multiple telecom companies (Movistar Peru, Claro Colombia, Tigo Guatemala) needing dashboards for debt collection/cobranza analytics. Each client requires:
+- 2-3 months of custom development per client
+- Different data sources (BigQuery, PostgreSQL, MySQL)
+- Different field names but similar business logic
+- Cross-client data isolation (CRITICAL - regulatory requirement)
+- Dashboard customization without code changes
+
+**Business Impact**: 
+- Current approach: 9-13 weeks per client
+- Target: 4-6 hours per client (98% time reduction)
+- Revenue multiplier: Can serve 50x more clients with same team
+
+### Technical Context
+User's team is **Python-focused** and specifically requested:
+- **Polars over pandas** for ETL performance (10-30x faster)
+- **Hexagonal Architecture** for clean separation
+- **GraphQL over REST** for complex dashboard queries with cross-filtering
+- **Multi-tenant by design** with complete client isolation
+- **Configuration over code** for new client onboarding
+
+## 🏗️ Architecture Decisions & Reasoning
+
+### Why Hexagonal Architecture?
+- **Domain purity**: Business logic independent of databases/APIs
+- **Multi-client support**: Easy to swap adapters per client
+- **Testing**: Domain can be tested without external dependencies
+- **Future-proof**: Easy to add new data sources or clients
+
+### Why Polars over Pandas?
+- **Performance**: 10-30x faster for ETL operations
+- **Memory efficiency**: Better handling of large datasets
+- **Modern API**: More intuitive for data transformations
+- **Arrow compatibility**: Better integration with cloud data sources
+
+### Why GraphQL over REST?
+- **Cross-filtering**: Complex queries with multiple related filters
+- **Dynamic schema**: Schema generated based on client configuration
+- **Exact data fetching**: No over-fetching for dashboard queries
+- **Real-time subscriptions**: Future support for live updates
+
+### Multi-Tenant Strategy: Template + Isolated Instances
+**Rejected approaches**:
+- Single app with multi-tenancy (security risk, data leakage)
+- Fork-per-client (maintenance nightmare)
+
+**Chosen approach**: Template + Isolated Deployments
+- Core template with shared business logic
+- Client-specific instances with own database and config
+- API Gateway for routing and rate limiting
+- Kubernetes namespaces for complete isolation
+
+## 📊 Real-World Data Examples
+
+### Movistar Peru Configuration
+```yaml
+# Real field mappings from conversation
+dimensions:
+  ejecutivo: {source_field: "ejecutivo", type: "categorical"}
+  servicio: {source_field: "linea_servicio", valid_values: ["MOVIL", "FIJA"]}
+  cartera: {source_field: "tipo_cartera", valid_values: ["Gestión Temprana", "Altas Nuevas"]}
+
+metrics:
+  pdps_por_hora: {formula: "pdp_count / horas_trabajadas"}
+  tasa_contactabilidad: {formula: "(contactos / total_gestiones) * 100"}
+
+data_source:
+  type: "bigquery"
+  project: "mibot-222814"
+  dataset: "BI_USA"
+  table: "dash_P3fV4dWNeMkN5RJMhV8e_vw_operativo"
+```
+
+### Cross-Filtering Business Logic
+Real example from conversation: When user filters by "Ejecutivo" → automatically suggest relevant values for "Cartera" and "Servicio" based on actual data relationships.
+
+### Homologation Challenge
+Different clients use different terminology:
+- Movistar: "ejecutivo" → Claro: "agente" → Tigo: "asesor"
+- Same business concept, different field names and values
+- Need automatic mapping with confidence scoring
+
+## 🎯 Development Philosophy
+
+### Lean & Pragmatic Approach
+- **MVP first**: Working system with Movistar before adding complexity
+- **Configuration over code**: New clients shouldn't require programming
+- **Real data focus**: Use actual BigQuery data from day 1
+- **Performance matters**: ETL must handle 100K+ records efficiently
+
+### Quality Gates
+- **Security first**: Zero tolerance for cross-client data leakage
+- **Performance benchmarks**: <3s dashboard load, <200ms cross-filter response
+- **Developer experience**: New client setup in 4 hours or less
+
+## 🚀 Implementation Priorities
+
+### Phase 0 (Current): Foundation
+- Project structure following hexagonal principles
+- Docker development environment
+- Core domain entities without external dependencies
+
+### Phase 1 (Next): MVP with Movistar
+- Working dashboard with real Movistar data
+- BigQuery adapter using Polars
+- Basic GraphQL API with dynamic schema
+- Simple React frontend with cross-filtering
+
+### Phase 2: Multi-Client Proof
+- Add Claro Colombia (PostgreSQL)
+- Automated client creation scripts
+- Complete isolation verification
+- Cross-filter optimization
+
+## 🛠️ Technical Specifications
+
+### Core Domain Entities
+```python
+@dataclass
+class Cliente:
+    documento: str
+    nombre: str
+    saldo_actual: float
+    dias_mora: int
+    
+@dataclass  
+class Gestion:
+    documento: str
+    fecha: datetime
+    canal: str  # CALL, VOICEBOT, EMAIL, SMS
+    tipificacion_homologada: str
+    es_contacto: bool
+    es_compromiso: bool
+```
+
+### ETL Strategy
+1. **Extract**: Client-specific adapters (BigQuery, PostgreSQL, etc.)
+2. **Transform**: Polars for high-performance data processing
+3. **Load**: Standardized schema in client-specific datamart
+4. **Homologate**: Automatic tipification mapping with ML future
+
+### Cross-Filtering Engine
+- Real-time suggestions based on filter changes
+- Debounced queries (300ms) for performance
+- Cached results with smart invalidation
+- Visual feedback (counts, percentages)
+
+## 🎨 UI/UX Considerations
+
+### Dashboard Components
+- **Filterable dimensions**: Auto-complete with search
+- **Cross-filter suggestions**: Visual counts and percentages  
+- **Drill-down**: Click any data point to auto-filter
+- **Responsive design**: Mobile-first approach
+- **Real-time updates**: WebSocket for live data (Phase 3)
+
+### Configuration UI (Future)
+- Drag & drop dashboard builder
+- Visual dimension/metric mapper
+- Preview mode with sample data
+- Export/import client configurations
+
+## ⚠️ Critical Considerations
+
+### Security & Compliance
+- **Data isolation**: Each client in separate namespace/database
+- **GDPR compliance**: Right to forget, data portability
+- **Audit logging**: All data access tracked
+- **Encryption**: Data at rest and in transit
+
+### Performance Requirements
+- **Dashboard load**: <3 seconds for 1000+ records
+- **Cross-filtering**: <200ms response time
+- **ETL processing**: Handle 1M+ records efficiently
+- **Concurrent users**: Support 100+ users per client
+
+### Scalability Targets
+- **50+ clients** on single cluster
+- **Auto-scaling** based on usage
+- **Multi-region** deployment capability
+- **Disaster recovery** with <1 hour RTO
+
+## 🔄 Iterative Development Strategy
+
+### Sprint Structure (2 weeks)
+- **Week 1**: Feature development and testing
+- **Week 2**: Integration, documentation, demo
+- **Demo Fridays**: Show progress to stakeholders
+- **Feedback loop**: Adjust priorities based on client needs
+
+### Success Metrics
+- **Time to value**: New client onboarded in <4 hours
+- **User adoption**: >80% daily active users per client
+- **Performance**: 95% of queries under SLA
+- **Business impact**: 10x increase in client acquisition capacity
+
+## 💡 Future Vision
+
+### Year 1: Multi-Client Platform
+- 10+ telecom clients across LATAM
+- Automated client onboarding
+- ML-powered homologation
+- Mobile app for executives
+
+### Year 2: Industry Expansion  
+- Banking, insurance, utilities
+- Industry-specific templates
+- Advanced analytics and forecasting
+- Embedded dashboard marketplace
+
+### Year 3: AI-Native Platform
+- Natural language queries
+- Automated insight generation
+- Predictive anomaly detection
+- Self-optimizing dashboards
+
+## 🗣️ Communication Style
+
+When working on this project, maintain:
+- **Practical focus**: Real business value over theoretical perfection
+- **Performance awareness**: Always consider ETL and query performance
+- **Security mindset**: Client isolation is non-negotiable
+- **Pragmatic decisions**: Choose proven technologies over cutting-edge
+- **Clear documentation**: Enable other developers to contribute easily
+
+## 🔗 Key Resources
+
+- **Original BigQuery**: `mibot-222814.BI_USA.dash_P3fV4dWNeMkN5RJMhV8e_vw_operativo`
+- **Business domains**: Telecom debt collection, productivity analytics
+- **Geographic focus**: Latin America (Peru, Colombia, Guatemala initially)
+- **Languages**: Spanish UI, English codebase and docs
+
+---
+
+This context should help maintain consistency and understanding of the project's true purpose and technical decisions across conversations.
