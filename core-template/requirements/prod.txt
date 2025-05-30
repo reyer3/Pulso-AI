@@ -1,0 +1,133 @@
+# 🚀 Pulso-AI Production Dependencies
+# Dependencias optimizadas para producción
+
+# Incluir dependencias base
+-r base.txt
+
+# =====================================
+# 🚀 PRODUCTION SERVER & PERFORMANCE
+# =====================================
+gunicorn==21.2.0           # WSGI HTTP Server para producción
+uvicorn[standard]==0.24.0  # Ya en base.txt pero crítico para producción
+
+# =====================================
+# 📊 MONITORING & OBSERVABILITY  
+# =====================================
+sentry-sdk[fastapi]==1.39.1    # Ya en base.txt
+prometheus-client==0.19.0       # Ya en base.txt
+opentelemetry-api==1.21.0
+opentelemetry-sdk==1.21.0
+opentelemetry-instrumentation-fastapi==0.42b0
+opentelemetry-instrumentation-sqlalchemy==0.42b0
+opentelemetry-instrumentation-redis==0.42b0
+
+# =====================================
+# 🔐 PRODUCTION SECURITY
+# =====================================
+cryptography==41.0.8       # Ya en base.txt
+python-jose[cryptography]==3.3.0  # Ya en base.txt
+passlib[bcrypt]==1.7.4     # Ya en base.txt
+
+# =====================================
+# ⚡ PERFORMANCE OPTIMIZATION
+# =====================================
+orjson==3.9.10             # JSON serialization más rápida
+ujson==5.8.0               # Alternativa para JSON
+asyncio-pool==0.6.0        # Para connection pooling avanzado
+
+# =====================================
+# 🗄️ DATABASE PRODUCTION
+# =====================================
+psycopg2-binary==2.9.9     # Ya en base.txt
+asyncpg==0.29.0            # Ya en base.txt
+sqlalchemy[asyncio]==2.0.23    # Con soporte async explícito
+
+# =====================================
+# 🔴 REDIS PRODUCTION
+# =====================================
+redis[hiredis]==5.0.1      # Con C parser para performance
+hiredis==2.2.3             # Parser C para Redis
+
+# =====================================
+# 📝 LOGGING PRODUCTION
+# =====================================
+structlog==23.2.0          # Ya en base.txt
+python-json-logger==2.0.7  # Para structured logging
+loguru==0.7.2              # Alternative logging con better performance
+
+# =====================================
+# 🌐 NETWORK & HTTP
+# =====================================
+httpx==0.25.2              # Ya en base.txt
+aiohttp==3.9.1             # Ya en base.txt
+requests==2.31.0           # Para compatibility con some services
+
+# =====================================
+# ⚙️ CONFIGURATION MANAGEMENT
+# =====================================
+python-dotenv==1.0.0       # Ya en base.txt
+pydantic-settings==2.1.0   # Ya en base.txt
+
+# =====================================
+# 🏢 CLOUD SERVICES PRODUCTION
+# =====================================
+google-cloud-bigquery==3.13.0      # Ya en base.txt
+google-cloud-storage==2.12.0       # Ya en base.txt
+google-cloud-logging==3.8.0        # Para Cloud Logging
+boto3==1.34.0                      # Ya en base.txt
+
+# =====================================
+# 📊 BUSINESS INTELLIGENCE PRODUCTION
+# =====================================
+polars==0.20.2             # Ya en base.txt
+pyarrow==14.0.1            # Ya en base.txt
+
+# =====================================
+# 🔄 BACKGROUND JOBS PRODUCTION
+# =====================================
+celery==5.3.4              # Ya en base.txt
+kombu==5.3.4               # Ya en base.txt
+flower==2.0.1              # Para monitoring Celery
+
+# =====================================
+# 📈 PRODUCTION HEALTH CHECKS
+# =====================================
+psutil==5.9.6              # Para system metrics
+py-cpuinfo==9.0.0          # Para CPU information
+
+# =====================================
+# 🛡️ RATE LIMITING & THROTTLING
+# =====================================
+slowapi==0.1.9             # Rate limiting para FastAPI
+limits==3.6.0              # Rate limiting utilities
+
+# =====================================
+# 📡 API DOCUMENTATION PRODUCTION
+# =====================================
+# FastAPI ya incluye OpenAPI/Swagger automáticamente
+# Strawberry GraphQL ya incluye GraphQL Playground
+
+# =====================================
+# 🔒 SECRETS MANAGEMENT
+# =====================================
+python-jose[cryptography]==3.3.0   # Ya incluido arriba
+hvac==2.0.0                        # Para HashiCorp Vault
+azure-keyvault-secrets==4.7.0      # Para Azure Key Vault
+google-cloud-secret-manager==2.18.1 # Para Google Secret Manager
+
+# =====================================
+# 📧 EMAIL & NOTIFICATIONS
+# =====================================
+fastapi-mail==1.4.1        # Para email sending
+emails==0.6                # Alternative email library
+
+# =====================================
+# 🗜️ COMPRESSION & OPTIMIZATION
+# =====================================
+python-multipart==0.0.6    # Ya en base.txt para file uploads
+aiofiles==23.2.1           # Para async file operations
+
+# =====================================
+# 🏗️ DEPLOYMENT HELPERS
+# =====================================
+click==8.1.7               # Ya en base.txt para CLI
