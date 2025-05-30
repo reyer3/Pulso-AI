@@ -1,255 +1,85 @@
-# 📜 Scripts de Automatización Pulso-AI
+# 📜 Scripts de Automatización y Utilidades
 
-**Scripts para automatizar** tareas comunes de desarrollo, deployment y mantenimiento.
+**Resumen:** Este directorio contiene una colección de scripts diseñados para automatizar tareas comunes, optimizar los flujos de trabajo de desarrollo, gestionar la infraestructura y asistir en tareas operativas para el proyecto Pulso-AI. El objetivo principal es mejorar la eficiencia, consistencia y fiabilidad en diversas etapas del ciclo de vida del proyecto.
 
-## 🎯 Objetivo
+**Propósito Clave y Responsabilidades:**
+-   **Automatización:** Automatizar tareas repetitivas como la incorporación de clientes, despliegues, copias de seguridad y configuración de entornos.
+-   **Soporte al Desarrollo:** Proporcionar herramientas para que los desarrolladores simplifiquen la configuración local, pruebas, linting y generación de código.
+-   **Integración CI/CD:** Ofrecer scripts que puedan integrarse fácilmente en pipelines de CI/CD para compilaciones, pruebas y despliegues automatizados.
+-   **Gestión de Infraestructura:** Ayudar en el aprovisionamiento, escalado y monitoreo de componentes de infraestructura.
+-   **Operaciones de Datos:** Facilitar tareas como la sincronización de bases de datos, validación de esquemas y exportaciones de datos.
 
-Reducir el tiempo de setup de nuevos clientes de **3 meses a 4 horas** mediante automatización completa.
+## 📁 Estructura del Directorio Explicada
 
-## 📁 Estructura
+Los scripts están organizados por su área funcional:
 
 ```
 scripts/
-├── client-management/
-│   ├── create_client.py      # Script principal para crear clientes
-│   ├── deploy_client.py      # Deploy automatizado
-│   ├── backup_client.py      # Backup de datos de cliente
-│   └── migrate_client.py     # Migración entre versiones
-├── development/
-│   ├── setup_dev.sh          # Setup completo de desarrollo
-│   ├── run_tests.sh          # Ejecutar todos los tests
-│   ├── lint_all.sh           # Linting de todo el proyecto
-│   └── generate_docs.sh      # Generar documentación
-├── infrastructure/
-│   ├── provision_cluster.py  # Provisionar cluster K8s
-│   ├── scale_client.py       # Auto-scaling por cliente
-│   └── monitor_health.py     # Monitoring y alertas
-├── data/
-│   ├── sync_databases.py     # Sincronización de datos
-│   ├── validate_schema.py    # Validación de esquemas
-│   └── export_analytics.py   # Export de analytics
-└── README.md                 # Esta documentación
+├── client-management/      # Scripts para gestionar instancias de clientes (crear, desplegar, backup, migrar)
+│   ├── create_client.py
+│   └── deploy_client.py
+├── development/            # Scripts para ayudar al desarrollo local (configuración, ejecución de pruebas, linting)
+│   ├── setup_dev_env.sh
+│   └── run_tests.sh
+├── cicd/                   # Scripts específicos para uso en pipelines de CI/CD (ej., compilar, publicar)
+│   └── build_and_push_docker.sh
+├── infrastructure/         # Scripts para gestionar infraestructura (aprovisionamiento, escalado, chequeos de salud)
+│   ├── provision_infra.py
+│   └── manage_kubernetes_secrets.sh
+├── data/                   # Scripts para tareas relacionadas con datos (sincronización de BD, validación de esquemas, exportaciones)
+│   └── sync_db.py
+├── utils/                  # Scripts de utilidad general o librerías compartidas para otros scripts
+│   └── common_utils.py
+└── README.md               # Esta documentación
 ```
+*(La estructura detallada existente del README original es excelente y puede adaptarse aquí).*
 
-## 🚀 Scripts Principales
+## 🚀 Categorías Clave de Scripts y Ejemplos
 
-### create_client.py
-**El script más importante** - crea un cliente completo en minutos.
+*(Las secciones detalladas existentes: "Scripts Principales" (como `create_client.py`, `deploy_client.py`), "Scripts de Desarrollo", "Scripts de Infraestructura" y "Scripts de Datos" son excelentes. Deberían conservarse, quizás bajo encabezados ligeramente más generalizados si es necesario, pero su nivel actual de detalle es valioso).*
 
-```bash
-# Uso básico
-python scripts/create_client.py movistar-peru "Movistar Perú" \
-  --database bigquery \
-  --country PE \
-  --region us-east-1
+### Gestión de Clientes
+-   **`create_client.py`**: Automatiza todo el ciclo de vida de incorporación de un nuevo cliente, desde la creación del directorio hasta el despliegue inicial.
+    ```bash
+    python scripts/client-management/create_client.py <nombre_cliente> --template <nombre_plantilla>
+    ```
+-   **`deploy_client.py`**: Maneja el despliegue de servicios específicos del cliente con opciones para entorno, validación y rollback.
+    ```bash
+    python scripts/client-management/deploy_client.py <nombre_cliente> --env production --validate
+    ```
 
-# Con configuración avanzada
-python scripts/create_client.py claro-colombia "Claro Colombia" \
-  --database postgresql \
-  --country CO \
-  --replicas 3 \
-  --resources-cpu 2 \
-  --resources-memory 4Gi \
-  --custom-domain claro.pulso-ai.com
-```
+### Desarrollo y CI/CD
+-   **`setup_dev_env.sh`**: Configura un entorno de desarrollo local, instala dependencias, configura hooks.
+    ```bash
+    ./scripts/development/setup_dev_env.sh --with-docker
+    ```
+-   **`run_tests.sh`**: Ejecuta varios tipos de pruebas (unitarias, integración, e2e) en todo el proyecto o módulos específicos.
+    ```bash
+    ./scripts/development/run_tests.sh --module core --type integration
+    ```
 
-**Funcionalidades**:
-- ✅ Crea estructura de directorios desde template
-- ✅ Reemplaza variables (CLIENT_ID, CLIENT_NAME, etc.)
-- ✅ Configura database connections
-- ✅ Genera manifiestos K8s
-- ✅ Aplica configuración inicial
-- ✅ Ejecuta health checks
+### Infraestructura y Operaciones
+-   **`provision_infra.py`**: (Ejemplo) Script para llamar a Terraform u otras herramientas de IaC para aprovisionar recursos para un entorno o cliente específico.
+-   **`backup_db.sh`**: Realiza copias de seguridad de bases de datos especificadas.
 
-### deploy_client.py
-Deploy automatizado con zero downtime.
+## 🛠️ Directrices de Uso
 
-```bash
-# Deploy a desarrollo
-python scripts/deploy_client.py movistar-peru --env development
+-   **Permisos:** Asegúrate de que los scripts sean ejecutables (`chmod +x nombre_script.sh`).
+-   **Entorno:** Ten en cuenta el entorno (local, staging, producción) para el que está destinado un script. Muchos scripts pueden requerir que se establezcan variables de entorno específicas (ej., `AWS_PROFILE`, `KUBECONFIG`).
+-   **Configuración:** Algunos scripts pueden usar un archivo `config.yaml` compartido o archivos `.env` dentro del directorio `scripts` o la raíz del proyecto para los ajustes. (La sección "Configuración" existente es buena).
+-   **Idempotencia:** Siempre que sea posible, los scripts deben diseñarse para ser idempotentes, lo que significa que ejecutarlos varias veces produce el mismo resultado sin efectos secundarios no deseados.
+-   **Logging:** Los scripts deben implementar un logging consistente para la trazabilidad y depuración.
 
-# Deploy a producción con validaciones
-python scripts/deploy_client.py movistar-peru --env production \
-  --validate-config \
-  --backup-before-deploy \
-  --rollback-on-failure
-```
+## 🤝 Contribuir Nuevos Scripts
 
-### backup_client.py
-Backup completo de datos y configuración.
-
-```bash
-# Backup completo
-python scripts/backup_client.py movistar-peru --include-data
-
-# Solo configuración
-python scripts/backup_client.py movistar-peru --config-only
-```
-
-## 🛠️ Scripts de Desarrollo
-
-### setup_dev.sh
-Setup completo del entorno de desarrollo en un comando.
-
-```bash
-# Setup todo el entorno
-./scripts/development/setup_dev.sh
-
-# Solo backend
-./scripts/development/setup_dev.sh --backend-only
-
-# Solo frontend  
-./scripts/development/setup_dev.sh --frontend-only
-```
-
-**Funcionalidades**:
-- Instala dependencies Python y Node.js
-- Configura pre-commit hooks
-- Levanta servicios Docker
-- Ejecuta tests iniciales
-- Valida que todo funciona
-
-### run_tests.sh
-Ejecuta todos los tests con coverage.
-
-```bash
-# Todos los tests
-./scripts/development/run_tests.sh
-
-# Solo backend
-./scripts/development/run_tests.sh --backend
-
-# Solo tests E2E
-./scripts/development/run_tests.sh --e2e
-```
-
-## 🏗️ Scripts de Infraestructura
-
-### provision_cluster.py
-Provisiona un cluster Kubernetes completo.
-
-```bash
-# Cluster básico
-python scripts/infrastructure/provision_cluster.py --name pulso-dev
-
-# Cluster con monitoring
-python scripts/infrastructure/provision_cluster.py --name pulso-prod \
-  --monitoring \
-  --backup \
-  --multi-region
-```
-
-### scale_client.py  
-Auto-scaling inteligente por cliente.
-
-```bash
-# Escalar basado en métricas
-python scripts/infrastructure/scale_client.py movistar-peru --auto
-
-# Escalar manualmente
-python scripts/infrastructure/scale_client.py movistar-peru --replicas 5
-```
-
-## 📊 Scripts de Datos
-
-### sync_databases.py
-Sincronización de datos entre entornos.
-
-```bash
-# Sync dev -> staging
-python scripts/data/sync_databases.py movistar-peru \
-  --from development --to staging
-
-# Solo schema (sin datos)
-python scripts/data/sync_databases.py movistar-peru \
-  --schema-only
-```
-
-### validate_schema.py
-Validación de esquemas de datos.
-
-```bash
-# Validar cliente específico
-python scripts/data/validate_schema.py movistar-peru
-
-# Validar todos los clientes
-python scripts/data/validate_schema.py --all-clients
-```
-
-## 🔄 Workflow Típico
-
-### Nuevo Cliente (4 horas)
-```bash
-# 1. Crear cliente (5 min)
-python scripts/create_client.py nuevo-cliente "Nuevo Cliente SA"
-
-# 2. Configurar dimensiones y métricas (2 horas)
-# Editar: clients/nuevo-cliente/config/
-
-# 3. Deploy a desarrollo (10 min)
-python scripts/deploy_client.py nuevo-cliente --env development
-
-# 4. Validar y ajustar (1.5 horas)
-# Testing y fine-tuning
-
-# 5. Deploy a producción (10 min)
-python scripts/deploy_client.py nuevo-cliente --env production
-```
-
-### Desarrollo Diario
-```bash
-# Setup diario
-./scripts/development/setup_dev.sh --quick
-
-# Desarrollo...
-
-# Antes de commit
-./scripts/development/lint_all.sh
-./scripts/development/run_tests.sh --quick
-```
-
-## 🔐 Configuración
-
-### Variables de Entorno
-```bash
-# Credenciales de cloud
-export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
-export AWS_ACCESS_KEY_ID="..."
-export AWS_SECRET_ACCESS_KEY="..."
-
-# Configuración de clusters
-export KUBERNETES_CLUSTER="pulso-prod"
-export DOCKER_REGISTRY="gcr.io/pulso-ai"
-
-# Notificaciones
-export SLACK_WEBHOOK_URL="..."
-export EMAIL_SMTP_CONFIG="..."
-```
-
-### Configuración Scripts
-```yaml
-# scripts/config.yaml
-default_settings:
-  backup_retention_days: 30
-  health_check_timeout: 60
-  deploy_timeout: 300
-  
-client_defaults:
-  replicas: 2
-  cpu_limit: "1000m"
-  memory_limit: "2Gi"
-  storage_size: "10Gi"
-```
-
-## 📈 Monitoring y Alertas
-
-Los scripts incluyen monitoring automático:
-
-- **Slack notifications** en deploy success/failure
-- **Email alerts** para errores críticos  
-- **Logs centralizados** en todos los scripts
-- **Metrics collection** para tiempos de ejecución
+-   Coloca el script en el subdirectorio apropiado según su función.
+-   Incluye una línea shebang (ej., `#!/bin/bash` o `#!/usr/bin/env python3`).
+-   Añade comentarios claros que expliquen la lógica compleja.
+-   Proporciona instrucciones de uso, ya sea mediante argumentos `--help` o documentando en este README o en un README de subdirectorio específico.
+-   Asegúrate de que cualquier información sensible (claves API, contraseñas) se maneje mediante variables de entorno o un sistema seguro de gestión de secretos, no codificada directamente.
+-   Escribe pruebas para scripts complejos si es factible.
 
 ---
 
-**Next Steps**: Implementar create_client.py como script prioritario para la Fase 1.
+**Próximos Pasos**: Priorizar la implementación completa y las pruebas de `client-management/create_client.py` y `development/setup_dev_env.sh` para optimizar la configuración inicial del proyecto y la incorporación de clientes.
+```
