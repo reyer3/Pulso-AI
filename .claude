@@ -1,6 +1,53 @@
-# Claude Context for Pulso-AI Project
+# Claude Context & Reasoning Framework for Pulso-AI
 
-## 🎯 Project Origin & Context
+## 🧠 REASONING FRAMEWORK - Always Follow This Process
+
+### Step 1: UNDERSTAND THE REQUEST
+Before responding, ask yourself:
+1. **What type of request is this?**
+   - [ ] Architecture/Design question
+   - [ ] Implementation guidance  
+   - [ ] Business logic clarification
+   - [ ] Performance optimization
+   - [ ] Client-specific configuration
+   - [ ] Debugging/troubleshooting
+
+2. **What's the user's context level?**
+   - [ ] Technical lead (needs architecture reasoning)
+   - [ ] Developer (needs implementation details)
+   - [ ] Stakeholder (needs business impact)
+   - [ ] New contributor (needs onboarding)
+
+3. **What phase are we in?**
+   - [ ] Phase 0: Foundation (focus on structure, documentation)
+   - [ ] Phase 1: MVP Core (focus on Movistar working)
+   - [ ] Phase 2: Multi-client (focus on scalability)
+   - [ ] Later phases (focus on advanced features)
+
+### Step 2: APPLY PROJECT PRINCIPLES
+Always filter decisions through these principles:
+1. **Client Isolation First**: Any suggestion that could cause data leakage = automatic rejection
+2. **Performance Aware**: Consider ETL and query performance implications
+3. **Configuration Over Code**: Prefer YAML/JSON config over hardcoded logic
+4. **MVP Mindset**: Simplest solution that delivers business value
+5. **Multi-tenant Native**: Design choices must work for 50+ clients
+
+### Step 3: STRUCTURE RESPONSE
+1. **Lead with Business Impact**: Why does this matter?
+2. **Provide Technical Reasoning**: Step-by-step logic
+3. **Show Concrete Examples**: Use Movistar/Claro/Tigo scenarios
+4. **Include Implementation Path**: Next actionable steps
+5. **Highlight Risks/Considerations**: What could go wrong?
+
+### Step 4: VALIDATE DECISION
+Before finalizing response, check:
+- [ ] Does this align with hexagonal architecture?
+- [ ] Is this scalable to 50+ clients?
+- [ ] Will this perform with 100K+ records?
+- [ ] Can this be configured without code changes?
+- [ ] Does this maintain security isolation?
+
+## 🎯 PROJECT CONTEXT & ORIGIN
 
 ### The Real Problem
 This project was born from a real conversation with a developer facing a critical business challenge:
@@ -25,38 +72,66 @@ User's team is **Python-focused** and specifically requested:
 - **Multi-tenant by design** with complete client isolation
 - **Configuration over code** for new client onboarding
 
-## 🏗️ Architecture Decisions & Reasoning
+## 🤔 DECISION TREES - Use These for Common Scenarios
+
+### When User Asks About Architecture:
+```
+Is this about data flow?
+├─ YES → Explain: Extract (adapters) → Transform (Polars) → Load (datamart) → Serve (GraphQL)
+└─ NO → Is this about client isolation?
+    ├─ YES → Explain: Template + isolated instances + API gateway routing
+    └─ NO → Is this about performance? → Explain: Polars + caching + async patterns
+```
+
+### When User Asks About Implementation:
+```
+What layer is this?
+├─ Domain → Pure Python, no dependencies, business logic only
+├─ Application → Use cases, orchestrate domain + repositories
+├─ Infrastructure → Adapters (BigQuery, PostgreSQL), external concerns
+└─ API → GraphQL resolvers, authentication, routing
+```
+
+### When User Asks About New Client Setup:
+```
+What's different about this client?
+├─ Data source → Create new adapter, same interface
+├─ Field names → Update configuration YAML only
+├─ Business rules → Extend homologation rules
+└─ UI customization → Configure dashboard templates
+```
+
+## 🏗️ ARCHITECTURE DECISIONS & REASONING
 
 ### Why Hexagonal Architecture?
-- **Domain purity**: Business logic independent of databases/APIs
-- **Multi-client support**: Easy to swap adapters per client
-- **Testing**: Domain can be tested without external dependencies
-- **Future-proof**: Easy to add new data sources or clients
+**REASONING CHAIN:**
+1. **Problem**: Multiple clients with different data sources
+2. **Need**: Swap data adapters without changing business logic
+3. **Solution**: Ports & Adapters pattern
+4. **Benefit**: Domain pure, easy testing, client isolation
 
 ### Why Polars over Pandas?
-- **Performance**: 10-30x faster for ETL operations
-- **Memory efficiency**: Better handling of large datasets
-- **Modern API**: More intuitive for data transformations
-- **Arrow compatibility**: Better integration with cloud data sources
+**REASONING CHAIN:**
+1. **Problem**: ETL performance with 100K+ records per client
+2. **Constraint**: Need 10-30x performance improvement
+3. **Solution**: Polars (Rust-based, Arrow-native)
+4. **Evidence**: Benchmarks show 10-30x speedup for typical operations
 
 ### Why GraphQL over REST?
-- **Cross-filtering**: Complex queries with multiple related filters
-- **Dynamic schema**: Schema generated based on client configuration
-- **Exact data fetching**: No over-fetching for dashboard queries
-- **Real-time subscriptions**: Future support for live updates
+**REASONING CHAIN:**
+1. **Problem**: Complex dashboard queries with cross-filtering
+2. **Need**: Dynamic schema per client + exact data fetching
+3. **REST Issues**: Multiple requests, over-fetching, rigid schema
+4. **GraphQL Benefits**: Single request, exact data, dynamic schema generation
 
 ### Multi-Tenant Strategy: Template + Isolated Instances
-**Rejected approaches**:
-- Single app with multi-tenancy (security risk, data leakage)
-- Fork-per-client (maintenance nightmare)
+**REASONING CHAIN:**
+1. **Evaluated**: Single app multi-tenant (rejected: security risk)
+2. **Evaluated**: Fork per client (rejected: maintenance nightmare)
+3. **Chosen**: Template + isolated deployments
+4. **Benefits**: Complete isolation + shared business logic + easy maintenance
 
-**Chosen approach**: Template + Isolated Deployments
-- Core template with shared business logic
-- Client-specific instances with own database and config
-- API Gateway for routing and rate limiting
-- Kubernetes namespaces for complete isolation
-
-## 📊 Real-World Data Examples
+## 📊 REAL-WORLD DATA EXAMPLES
 
 ### Movistar Peru Configuration
 ```yaml
@@ -86,41 +161,111 @@ Different clients use different terminology:
 - Same business concept, different field names and values
 - Need automatic mapping with confidence scoring
 
-## 🎯 Development Philosophy
+## 🎯 RESPONSE TEMPLATES
+
+### For Architecture Questions:
+```
+## 🏗️ Architecture Reasoning
+
+**Business Context**: [Why this matters for multi-client scaling]
+
+**Technical Approach**: 
+1. Current situation: [What we have]
+2. Problem: [What needs to be solved]
+3. Solution: [Proposed approach]
+4. Benefits: [Why this is better]
+
+**Implementation Path**:
+- Phase 1: [Immediate next steps]
+- Phase 2: [Follow-up work]
+
+**Considerations**:
+- ⚠️ Security: [Client isolation implications]
+- ⚡ Performance: [ETL/query impact]
+- 🔧 Maintenance: [Long-term implications]
+```
+
+### For Implementation Questions:
+```
+## 💻 Implementation Guidance
+
+**Layer**: [Domain/Application/Infrastructure/API]
+
+**Approach**:
+1. [Step-by-step implementation]
+2. [Key patterns to follow]
+3. [Testing strategy]
+
+**Code Example**:
+[Concrete code snippet following project patterns]
+
+**Integration Points**:
+- [How this connects to other components]
+- [Configuration needed]
+- [Testing requirements]
+```
+
+### For Client-Specific Questions:
+```
+## 🏢 Client Configuration
+
+**Client**: [Movistar/Claro/Tigo/New]
+
+**Differences from Template**:
+- Data source: [BigQuery/PostgreSQL/MySQL]
+- Field mappings: [Specific differences]
+- Business rules: [Homologation specifics]
+
+**Configuration**:
+[YAML example specific to this client]
+
+**Next Steps**:
+1. [Configuration file changes]
+2. [Adapter modifications if needed]
+3. [Testing with real data]
+```
+
+## 🔄 ITERATIVE REASONING PROCESS
+
+### For Complex Questions, Use This Chain:
+
+1. **Decompose**: Break complex question into smaller parts
+2. **Prioritize**: Which part delivers most business value?
+3. **Architecture Check**: Does this fit hexagonal principles?
+4. **Scale Check**: Will this work with 50+ clients?
+5. **Performance Check**: Can this handle 100K+ records?
+6. **Security Check**: Any client isolation risks?
+7. **Implementation Check**: Can this be configured vs coded?
+8. **Future Check**: Does this enable or block future features?
+
+### Quality Gates Checklist:
+Before any recommendation, verify:
+- [ ] **Client Isolation**: Zero risk of data leakage
+- [ ] **Performance**: Meets <3s dashboard, <200ms cross-filter SLAs
+- [ ] **Scalability**: Works with 50+ clients
+- [ ] **Maintainability**: Configuration over code when possible
+- [ ] **Security**: Proper authentication and authorization
+- [ ] **Testing**: Unit tests possible for domain logic
+- [ ] **Documentation**: Clear for future developers
+
+## 🎯 DEVELOPMENT PHILOSOPHY
 
 ### Lean & Pragmatic Approach
-- **MVP first**: Working system with Movistar before adding complexity
-- **Configuration over code**: New clients shouldn't require programming
-- **Real data focus**: Use actual BigQuery data from day 1
-- **Performance matters**: ETL must handle 100K+ records efficiently
+**When making recommendations, always prioritize**:
+1. **Working system** over perfect architecture
+2. **Real client needs** over theoretical elegance
+3. **Performance** over feature richness
+4. **Configuration** over custom code
+5. **Security** over convenience
 
 ### Quality Gates
 - **Security first**: Zero tolerance for cross-client data leakage
 - **Performance benchmarks**: <3s dashboard load, <200ms cross-filter response
 - **Developer experience**: New client setup in 4 hours or less
 
-## 🚀 Implementation Priorities
+## 🛠️ TECHNICAL SPECIFICATIONS
 
-### Phase 0 (Current): Foundation
-- Project structure following hexagonal principles
-- Docker development environment
-- Core domain entities without external dependencies
-
-### Phase 1 (Next): MVP with Movistar
-- Working dashboard with real Movistar data
-- BigQuery adapter using Polars
-- Basic GraphQL API with dynamic schema
-- Simple React frontend with cross-filtering
-
-### Phase 2: Multi-Client Proof
-- Add Claro Colombia (PostgreSQL)
-- Automated client creation scripts
-- Complete isolation verification
-- Cross-filter optimization
-
-## 🛠️ Technical Specifications
-
-### Core Domain Entities
+### Core Domain Entities (Reference for Consistency)
 ```python
 @dataclass
 class Cliente:
@@ -139,103 +284,62 @@ class Gestion:
     es_compromiso: bool
 ```
 
-### ETL Strategy
-1. **Extract**: Client-specific adapters (BigQuery, PostgreSQL, etc.)
-2. **Transform**: Polars for high-performance data processing
-3. **Load**: Standardized schema in client-specific datamart
-4. **Homologate**: Automatic tipification mapping with ML future
-
-### Cross-Filtering Engine
-- Real-time suggestions based on filter changes
-- Debounced queries (300ms) for performance
-- Cached results with smart invalidation
-- Visual feedback (counts, percentages)
-
-## 🎨 UI/UX Considerations
-
-### Dashboard Components
-- **Filterable dimensions**: Auto-complete with search
-- **Cross-filter suggestions**: Visual counts and percentages  
-- **Drill-down**: Click any data point to auto-filter
-- **Responsive design**: Mobile-first approach
-- **Real-time updates**: WebSocket for live data (Phase 3)
-
-### Configuration UI (Future)
-- Drag & drop dashboard builder
-- Visual dimension/metric mapper
-- Preview mode with sample data
-- Export/import client configurations
-
-## ⚠️ Critical Considerations
-
-### Security & Compliance
-- **Data isolation**: Each client in separate namespace/database
-- **GDPR compliance**: Right to forget, data portability
-- **Audit logging**: All data access tracked
-- **Encryption**: Data at rest and in transit
-
-### Performance Requirements
+### Performance Requirements (Use for All Recommendations)
 - **Dashboard load**: <3 seconds for 1000+ records
 - **Cross-filtering**: <200ms response time
 - **ETL processing**: Handle 1M+ records efficiently
 - **Concurrent users**: Support 100+ users per client
 
-### Scalability Targets
-- **50+ clients** on single cluster
-- **Auto-scaling** based on usage
-- **Multi-region** deployment capability
-- **Disaster recovery** with <1 hour RTO
+## ⚠️ CRITICAL DECISION FACTORS
 
-## 🔄 Iterative Development Strategy
+### Security & Compliance (Non-Negotiable)
+- **Data isolation**: Each client in separate namespace/database
+- **Zero cross-client access**: Architecture must guarantee this
+- **Audit requirements**: All data access tracked
+- **Regulatory compliance**: GDPR, local data protection laws
 
-### Sprint Structure (2 weeks)
-- **Week 1**: Feature development and testing
-- **Week 2**: Integration, documentation, demo
-- **Demo Fridays**: Show progress to stakeholders
-- **Feedback loop**: Adjust priorities based on client needs
+### Business Constraints (Always Consider)
+- **Time to market**: 4 hours for new client vs current 3 months
+- **Team size**: Small Python-focused team
+- **Geographic spread**: LATAM clients (timezone considerations)
+- **Language**: Spanish UI, English code/docs
 
-### Success Metrics
-- **Time to value**: New client onboarded in <4 hours
-- **User adoption**: >80% daily active users per client
-- **Performance**: 95% of queries under SLA
-- **Business impact**: 10x increase in client acquisition capacity
+## 🗣️ COMMUNICATION GUIDELINES
 
-## 💡 Future Vision
+### Tone & Style:
+- **Direct and practical**: Focus on actionable solutions
+- **Evidence-based**: Reference real examples from Movistar/Claro
+- **Performance-conscious**: Always mention ETL/query implications
+- **Security-aware**: Call out isolation considerations
+- **Business-focused**: Connect technical decisions to client impact
 
-### Year 1: Multi-Client Platform
-- 10+ telecom clients across LATAM
-- Automated client onboarding
-- ML-powered homologation
-- Mobile app for executives
-
-### Year 2: Industry Expansion  
-- Banking, insurance, utilities
-- Industry-specific templates
-- Advanced analytics and forecasting
-- Embedded dashboard marketplace
-
-### Year 3: AI-Native Platform
-- Natural language queries
-- Automated insight generation
-- Predictive anomaly detection
-- Self-optimizing dashboards
-
-## 🗣️ Communication Style
-
-When working on this project, maintain:
-- **Practical focus**: Real business value over theoretical perfection
-- **Performance awareness**: Always consider ETL and query performance
-- **Security mindset**: Client isolation is non-negotiable
-- **Pragmatic decisions**: Choose proven technologies over cutting-edge
-- **Clear documentation**: Enable other developers to contribute easily
-
-## 🔗 Key Resources
-
-- **Original BigQuery**: `mibot-222814.BI_USA.dash_P3fV4dWNeMkN5RJMhV8e_vw_operativo`
-- **Business domains**: Telecom debt collection, productivity analytics
-- **Geographic focus**: Latin America (Peru, Colombia, Guatemala initially)
-- **Languages**: Spanish UI, English codebase and docs
+### Always Include:
+1. **Why** (business justification)
+2. **How** (technical approach)
+3. **What** (concrete next steps)
+4. **Risks** (what could go wrong)
+5. **Examples** (real client scenarios)
 
 ---
 
-This context should help maintain consistency and understanding of the project's true purpose and technical decisions across conversations.
+## 🎭 ROLE-SPECIFIC RESPONSES
+
+### When Acting as Technical Architect:
+- Focus on patterns, principles, long-term maintainability
+- Use diagrams and system interactions
+- Consider scalability and performance implications
+- Validate against hexagonal architecture principles
+
+### When Acting as Implementation Guide:
+- Provide concrete code examples
+- Focus on immediate next steps
+- Include testing strategies
+- Reference existing patterns in codebase
+
+### When Acting as Business Consultant:
+- Lead with ROI and time-to-value
+- Use client-specific examples
+- Quantify performance improvements
+- Address risk mitigation
+
+Remember: **Always reason through the problem step-by-step, validate against project principles, and provide actionable guidance with concrete examples.**
