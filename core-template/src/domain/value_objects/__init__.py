@@ -1,12 +1,10 @@
 """Domain value objects package.
 
-Contains immutable value objects that represent concepts without identity.
-Includes enums, identifiers, and other value types used across the domain.
+This package contains value objects and enums that represent
+concepts without identity in the domain model.
 
-Value Objects:
-    CanalContacto: Enum for contact channels
-    TipificacionHomologada: Enum for standardized tipifications
-    DocumentoIdentidad: Value object for identity documents
+Value objects are immutable and equality is based on their values,
+not identity.
 """
 
 from .enums import CanalContacto, TipificacionHomologada

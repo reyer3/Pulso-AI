@@ -1,172 +1,207 @@
 """Metrica value object.
 
-Value object for calculated metrics in the dashboard system.
-Supports dynamic metric calculation with filtering context.
+Represents calculated metrics used in dashboards and reports.
+This value object encapsulates metric calculation results
+with their context and validation rules.
 """
 
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, Any, Optional
+from enum import Enum
 
 
-@dataclass(frozen=True)
+class UnidadMetrica(Enum):
+    """Units for metric values."""
+    PORCENTAJE = "%"
+    CANTIDAD = "count"
+    HORAS = "hours"
+    MINUTOS = "minutes"
+    PESOS = "currency"
+    RATIO = "ratio"
+    SCORE = "score"
+
+
+class PeriodoMetrica(Enum):
+    """Time periods for metric calculation."""
+    DIARIO = "daily"
+    SEMANAL = "weekly"
+    MENSUAL = "monthly"
+    TRIMESTRAL = "quarterly"
+    ANUAL = "yearly"
+    TIEMPO_REAL = "real_time"
+
+
+@dataclass(frozen=True)  # Immutable value object
 class Metrica:
-    """Value object para métricas calculadas.
+    """Value object representing a calculated metric.
     
-    Representa una métrica calculada del dashboard con su contexto completo.
-    Es inmutable (frozen=True) siguiendo el patrón Value Object.
-    
-    Attributes:
-        nombre: Identificador de la métrica (e.g., "tasa_contactabilidad")
-        valor: Valor numérico calculado de la métrica
-        unidad: Unidad de medida ("%", "count", "hours", "currency")
-        periodo: Período de cálculo ("daily", "weekly", "monthly")
-        fecha_calculo: Timestamp de cuando se calculó
-        filtros_aplicados: Contexto de filtros que se usaron en el cálculo
-        metadata: Información adicional sobre el cálculo
+    This value object contains the result of a metric calculation
+    along with its context, validation thresholds, and metadata.
     
     Examples:
         >>> from datetime import datetime
         >>> metrica = Metrica(
         ...     nombre="tasa_contactabilidad",
-        ...     valor=75.5,
-        ...     unidad="%",
-        ...     periodo="daily",
-        ...     fecha_calculo=datetime.now(),
-        ...     filtros_aplicados={"ejecutivo": "Ana García", "servicio": "MOVIL"}
+        ...     valor=65.5,
+        ...     unidad=UnidadMetrica.PORCENTAJE,
+        ...     periodo=PeriodoMetrica.DIARIO,
+        ...     fecha_calculo=datetime.now()
         ... )
-        >>> metrica.es_metrica_porcentual()
+        >>> metrica.esta_en_rango_optimo(60.0, 80.0)
         True
-        >>> metrica.supera_umbral(70.0)
-        True
+        >>> metrica.calcular_nivel_rendimiento()
+        'BUENO'
     """
     
-    nombre: str
-    valor: float
-    unidad: str
-    periodo: str
-    fecha_calculo: datetime
-    filtros_aplicados: Dict[str, Any]
-    metadata: Optional[Dict[str, Any]] = None
+    nombre: str  # Metric identifier (e.g., "tasa_contactabilidad")
+    valor: float  # Calculated metric value
+    unidad: UnidadMetrica  # Unit of measurement
+    periodo: PeriodoMetrica  # Time period for calculation
+    fecha_calculo: datetime  # When metric was calculated
+    filtros_aplicados: Optional[Dict[str, Any]] = None  # Context filters
+    threshold_warning: Optional[float] = None  # Warning threshold
+    threshold_critical: Optional[float] = None  # Critical threshold
+    target_value: Optional[float] = None  # Target/goal value
+    metadata: Optional[Dict[str, Any]] = None  # Additional context
     
-    def __post_init__(self):
-        """Validate value object constraints."""
-        if not self.nombre or not self.nombre.strip():
-            raise ValueError("El nombre de la métrica no puede estar vacío")
-            
-        if not self.unidad or not self.unidad.strip():
-            raise ValueError("La unidad no puede estar vacía")
-            
-        if not self.periodo or not self.periodo.strip():
-            raise ValueError("El período no puede estar vacío")
-            
-        # Validate unidad values
-        unidades_validas = {"%", "count", "hours", "currency", "ratio", "days"}
-        if self.unidad not in unidades_validas:
-            raise ValueError(
-                f"Unidad inválida: {self.unidad}. "
-                f"Válidas: {unidades_validas}"
-            )
-            
-        # Validate periodo values  
-        periodos_validos = {"daily", "weekly", "monthly", "quarterly", "yearly"}
-        if self.periodo not in periodos_validos:
-            raise ValueError(
-                f"Período inválido: {self.periodo}. "
-                f"Válidos: {periodos_validos}"
-            )
-    
-    def es_metrica_porcentual(self) -> bool:
-        """Determina si la métrica es un porcentaje.
+    def __post_init__(self) -> None:
+        """Validate metric invariants."""
+        if not self.nombre.strip():
+            raise ValueError("Nombre de métrica no puede estar vacío")
         
-        Returns:
-            True si la unidad es porcentual
-        """
-        return self.unidad == "%"
+        # Validate percentage values
+        if self.unidad == UnidadMetrica.PORCENTAJE:
+            if not (0 <= self.valor <= 100):
+                raise ValueError("Valor de porcentaje debe estar entre 0 y 100")
+        
+        # Validate score values
+        if self.unidad == UnidadMetrica.SCORE:
+            if not (0 <= self.valor <= 1):
+                raise ValueError("Valor de score debe estar entre 0 y 1")
+        
+        # Validate threshold relationships
+        if (self.threshold_warning is not None and 
+            self.threshold_critical is not None):
+            if self.threshold_critical <= self.threshold_warning:
+                raise ValueError(
+                    "Threshold crítico debe ser mayor al de warning"
+                )
     
-    def supera_umbral(self, umbral: float) -> bool:
-        """Business rule: determina si métrica supera umbral dado.
+    def esta_en_rango_optimo(
+        self, 
+        minimo: float, 
+        maximo: float
+    ) -> bool:
+        """Check if metric value is within optimal range.
         
         Args:
-            umbral: Valor umbral para comparar
+            minimo: Minimum acceptable value
+            maximo: Maximum acceptable value
             
         Returns:
-            True si el valor supera el umbral
+            True if value is within range
             
         Examples:
-            >>> metrica = Metrica("test", 75.0, "%", "daily", datetime.now(), {})
-            >>> metrica.supera_umbral(70.0)
-            True
-        """
-        return self.valor > umbral
-    
-    def esta_en_rango_optimo(self, minimo: float, maximo: float) -> bool:
-        """Business rule: determina si métrica está en rango óptimo.
-        
-        Args:
-            minimo: Valor mínimo del rango óptimo
-            maximo: Valor máximo del rango óptimo
-            
-        Returns:
-            True si el valor está dentro del rango
-            
-        Examples:
-            >>> metrica = Metrica("test", 75.0, "%", "daily", datetime.now(), {})
-            >>> metrica.esta_en_rango_optimo(70.0, 80.0)
+            >>> metrica = Metrica("test", 75.0, UnidadMetrica.PORCENTAJE, ...)
+            >>> metrica.esta_en_rango_optimo(60.0, 80.0)
             True
         """
         return minimo <= self.valor <= maximo
     
-    def obtener_clasificacion_rendimiento(self) -> str:
-        """Business rule: clasifica rendimiento basado en valor y unidad.
+    def calcular_nivel_rendimiento(self) -> str:
+        """Calculate performance level based on thresholds.
         
         Returns:
-            Clasificación: "EXCELENTE", "BUENO", "REGULAR", "DEFICIENTE"
-        """
-        if self.es_metrica_porcentual():
-            if self.valor >= 80:
-                return "EXCELENTE"
-            elif self.valor >= 60:
-                return "BUENO"
-            elif self.valor >= 40:
-                return "REGULAR"
-            else:
-                return "DEFICIENTE"
-        else:
-            # For non-percentage metrics, use relative thresholds
-            if self.valor >= 100:
-                return "EXCELENTE"
-            elif self.valor >= 50:
-                return "BUENO"
-            elif self.valor >= 25:
-                return "REGULAR"
-            else:
-                return "DEFICIENTE"
-    
-    def tiene_filtros_aplicados(self) -> bool:
-        """Determina si la métrica fue calculada con filtros.
-        
-        Returns:
-            True si hay filtros aplicados en el cálculo
-        """
-        return bool(self.filtros_aplicados)
-    
-    def obtener_descripcion_filtros(self) -> str:
-        """Genera descripción legible de los filtros aplicados.
-        
-        Returns:
-            String descriptivo de los filtros, o "Sin filtros" si no hay
+            Performance level: "EXCELENTE", "BUENO", "WARNING", "CRITICO"
             
         Examples:
-            >>> filtros = {"ejecutivo": "Ana García", "servicio": "MOVIL"}
-            >>> metrica = Metrica("test", 75.0, "%", "daily", datetime.now(), filtros)
-            >>> metrica.obtener_descripcion_filtros()
-            'ejecutivo: Ana García, servicio: MOVIL'
+            >>> metrica = Metrica(
+            ...     "test", 85.0, UnidadMetrica.PORCENTAJE, 
+            ...     PeriodoMetrica.DIARIO, datetime.now(),
+            ...     threshold_warning=70.0, threshold_critical=50.0
+            ... )
+            >>> metrica.calcular_nivel_rendimiento()
+            'EXCELENTE'
         """
-        if not self.tiene_filtros_aplicados():
-            return "Sin filtros"
+        if self.target_value and self.valor >= self.target_value:
+            return "EXCELENTE"
+        elif (self.threshold_warning is not None and 
+              self.valor >= self.threshold_warning):
+            return "BUENO"
+        elif (self.threshold_critical is not None and 
+              self.valor >= self.threshold_critical):
+            return "WARNING"
+        else:
+            return "CRITICO"
+    
+    def porcentaje_del_target(self) -> Optional[float]:
+        """Calculate percentage achievement of target value.
+        
+        Returns:
+            Percentage of target achieved, or None if no target set
+        """
+        if self.target_value is None or self.target_value == 0:
+            return None
+        
+        return (self.valor / self.target_value) * 100
+    
+    def formato_display(self) -> str:
+        """Format metric for display in UI.
+        
+        Returns:
+            Formatted string with value and unit
             
-        filtros_str = ", ".join(
-            f"{key}: {value}" for key, value in self.filtros_aplicados.items()
+        Examples:
+            >>> metrica = Metrica("test", 65.5, UnidadMetrica.PORCENTAJE, ...)
+            >>> metrica.formato_display()
+            '65.5%'
+        """
+        if self.unidad == UnidadMetrica.PORCENTAJE:
+            return f"{self.valor:.1f}%"
+        elif self.unidad == UnidadMetrica.CANTIDAD:
+            return f"{int(self.valor)}"
+        elif self.unidad == UnidadMetrica.PESOS:
+            return f"${self.valor:,.2f}"
+        elif self.unidad == UnidadMetrica.HORAS:
+            return f"{self.valor:.1f}h"
+        elif self.unidad == UnidadMetrica.MINUTOS:
+            return f"{int(self.valor)}min"
+        elif self.unidad == UnidadMetrica.SCORE:
+            return f"{self.valor:.2f}"
+        else:
+            return f"{self.valor:.2f} {self.unidad.value}"
+    
+    def es_metrica_temporal(self) -> bool:
+        """Check if metric is time-based.
+        
+        Returns:
+            True if metric period is not real-time
+        """
+        return self.periodo != PeriodoMetrica.TIEMPO_REAL
+    
+    def dias_desde_calculo(self) -> int:
+        """Calculate days since metric was calculated.
+        
+        Returns:
+            Number of days since calculation
+        """
+        return (datetime.now() - self.fecha_calculo).days
+    
+    def necesita_actualizacion(self, max_days: int = 1) -> bool:
+        """Check if metric needs to be recalculated.
+        
+        Args:
+            max_days: Maximum days before recalculation needed
+            
+        Returns:
+            True if metric should be recalculated
+        """
+        return self.dias_desde_calculo() > max_days
+    
+    def __str__(self) -> str:
+        """String representation of the metric."""
+        return (
+            f"Metrica({self.nombre}={self.formato_display()}, "
+            f"periodo={self.periodo.value})"
         )
-        return filtros_str

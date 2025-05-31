@@ -1,27 +1,26 @@
 """Domain exceptions package.
 
-Contains all domain-specific exceptions that represent business rule violations
-or domain invariant failures. These exceptions are part of the domain language.
+This package contains domain-specific exceptions that represent
+business rule violations and domain-level errors.
 
-Exceptions:
-    ClienteNotFound: Cliente does not exist
-    GestionInvalida: Invalid gestion data or business rule violation
-    MetricaCalculationError: Error calculating metric
-    DomainValidationError: Generic domain validation failure
+These exceptions should be used when domain invariants are violated
+or when business operations cannot be completed.
 """
 
 from .domain_exceptions import (
+    DomainException,
     ClienteNotFound,
     GestionInvalida,
-    MetricaCalculationError,
-    DomainValidationError,
-    TipificacionHomologacionError
+    MetricaInvalida,
+    HomologacionError,
+    ReglaNegocioViolada
 )
 
 __all__ = [
+    "DomainException",
     "ClienteNotFound",
     "GestionInvalida", 
-    "MetricaCalculationError",
-    "DomainValidationError",
-    "TipificacionHomologacionError"
+    "MetricaInvalida",
+    "HomologacionError",
+    "ReglaNegocioViolada"
 ]

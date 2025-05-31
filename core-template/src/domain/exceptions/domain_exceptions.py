@@ -1,209 +1,310 @@
 """Domain-specific exceptions.
 
-Exceptions that represent business rule violations or domain invariant failures.
-These are part of the ubiquitous language and should be meaningful to business stakeholders.
+This module defines exceptions that represent business rule violations
+and domain-level errors in the debt collection system.
 """
 
+from typing import Optional, Dict, Any
 
-class DomainValidationError(Exception):
-    """Base exception for domain validation failures.
+
+class DomainException(Exception):
+    """Base exception for all domain-level errors.
     
-    Raised when domain entities or value objects violate business rules
-    or invariants during creation or modification.
+    This is the base class for all exceptions that originate
+    from the domain layer and represent business rule violations.
     
     Attributes:
-        message: Human-readable error description
-        entity_type: Type of domain entity that failed validation
-        field: Specific field that caused the validation failure
-    
-    Examples:
-        >>> raise DomainValidationError(
-        ...     "El saldo no puede ser negativo",
-        ...     entity_type="Cliente",
-        ...     field="saldo_actual"
-        ... )
+        message: Human-readable error message
+        code: Machine-readable error code
+        context: Additional context about the error
     """
     
-    def __init__(self, message: str, entity_type: str = None, field: str = None):
+    def __init__(
+        self, 
+        message: str, 
+        code: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Initialize domain exception.
+        
+        Args:
+            message: Human-readable error description
+            code: Machine-readable error code for API responses
+            context: Additional context data about the error
+        """
         super().__init__(message)
         self.message = message
-        self.entity_type = entity_type
-        self.field = field
+        self.code = code or self.__class__.__name__
+        self.context = context or {}
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert exception to dictionary for serialization.
         
-    def __str__(self):
-        if self.entity_type and self.field:
-            return f"{self.entity_type}.{self.field}: {self.message}"
-        elif self.entity_type:
-            return f"{self.entity_type}: {self.message}"
-        else:
-            return self.message
+        Returns:
+            Dictionary representation of the exception
+        """
+        return {
+            "error_type": self.__class__.__name__,
+            "message": self.message,
+            "code": self.code,
+            "context": self.context
+        }
 
 
-class ClienteNotFound(DomainValidationError):
-    """Exception raised when a cliente is not found.
+class ClienteNotFound(DomainException):
+    """Exception raised when a customer cannot be found.
     
-    Raised during business operations that require an existing cliente
-    but the documento provided doesn't match any cliente in the system.
+    This exception is raised when attempting to access a customer
+    that doesn't exist in the system.
     
-    Attributes:
-        documento: Document identifier that was not found
-        
     Examples:
         >>> raise ClienteNotFound("12345678")
+        ClienteNotFound: Cliente con documento 12345678 no encontrado
     """
     
-    def __init__(self, documento: str):
-        self.documento = documento
-        message = f"Cliente con documento '{documento}' no encontrado"
-        super().__init__(message, entity_type="Cliente", field="documento")
-
-
-class GestionInvalida(DomainValidationError):
-    """Exception raised when gestion data violates business rules.
-    
-    Raised when trying to create or modify a gestion with invalid data
-    or when the gestion violates domain business rules.
-    
-    Attributes:
-        gestion_id: ID of the invalid gestion
-        violation: Specific business rule that was violated
+    def __init__(self, documento: str) -> None:
+        """Initialize customer not found exception.
         
+        Args:
+            documento: Customer document that was not found
+        """
+        message = f"Cliente con documento {documento} no encontrado"
+        super().__init__(
+            message=message,
+            code="CLIENTE_NOT_FOUND",
+            context={"documento": documento}
+        )
+        self.documento = documento
+
+
+class GestionInvalida(DomainException):
+    """Exception raised when a management action is invalid.
+    
+    This exception is raised when attempting to create or modify
+    a management action that violates business rules.
+    
     Examples:
         >>> raise GestionInvalida(
-        ...     gestion_id="123",
-        ...     violation="No se puede registrar compromiso sin contacto"
+        ...     "No puede haber compromiso sin contacto efectivo",
+        ...     "COMPROMISO_SIN_CONTACTO"
         ... )
     """
     
-    def __init__(self, gestion_id: str = None, violation: str = None):
-        self.gestion_id = gestion_id
-        self.violation = violation
+    def __init__(
+        self, 
+        message: str, 
+        code: Optional[str] = None,
+        gestion_id: Optional[str] = None
+    ) -> None:
+        """Initialize invalid management exception.
         
-        if violation:
-            message = violation
-        else:
-            message = "Datos de gestión inválidos"
-            
+        Args:
+            message: Description of the validation error
+            code: Specific error code
+            gestion_id: ID of the invalid management action
+        """
+        context = {}
         if gestion_id:
-            message = f"Gestión {gestion_id}: {message}"
-            
-        super().__init__(message, entity_type="Gestion")
-
-
-class MetricaCalculationError(DomainValidationError):
-    """Exception raised when metric calculation fails.
-    
-    Raised when there's an error calculating a domain metric,
-    either due to invalid data or mathematical errors.
-    
-    Attributes:
-        metrica_nombre: Name of the metric that failed
-        calculation_error: Specific calculation error description
+            context["gestion_id"] = gestion_id
         
+        super().__init__(
+            message=message,
+            code=code or "GESTION_INVALIDA",
+            context=context
+        )
+        self.gestion_id = gestion_id
+
+
+class MetricaInvalida(DomainException):
+    """Exception raised when a metric calculation is invalid.
+    
+    This exception is raised when metric values or calculations
+    violate business rules or validation constraints.
+    
     Examples:
-        >>> raise MetricaCalculationError(
-        ...     metrica_nombre="tasa_contactabilidad",
-        ...     calculation_error="División por cero: no hay gestiones"
+        >>> raise MetricaInvalida(
+        ...     "Valor de porcentaje debe estar entre 0 y 100",
+        ...     "PORCENTAJE_FUERA_RANGO",
+        ...     metrica_nombre="tasa_contactabilidad"
         ... )
     """
     
-    def __init__(self, metrica_nombre: str, calculation_error: str = None):
+    def __init__(
+        self,
+        message: str,
+        code: Optional[str] = None,
+        metrica_nombre: Optional[str] = None,
+        valor: Optional[float] = None
+    ) -> None:
+        """Initialize invalid metric exception.
+        
+        Args:
+            message: Description of the validation error
+            code: Specific error code
+            metrica_nombre: Name of the invalid metric
+            valor: Invalid value that caused the error
+        """
+        context = {}
+        if metrica_nombre:
+            context["metrica_nombre"] = metrica_nombre
+        if valor is not None:
+            context["valor"] = valor
+        
+        super().__init__(
+            message=message,
+            code=code or "METRICA_INVALIDA",
+            context=context
+        )
         self.metrica_nombre = metrica_nombre
-        self.calculation_error = calculation_error
-        
-        if calculation_error:
-            message = f"Error calculando '{metrica_nombre}': {calculation_error}"
-        else:
-            message = f"Error calculando métrica '{metrica_nombre}'"
-            
-        super().__init__(message, entity_type="Metrica", field="valor")
+        self.valor = valor
 
 
-class TipificacionHomologacionError(DomainValidationError):
-    """Exception raised when tipificacion homologation fails.
+class HomologacionError(DomainException):
+    """Exception raised when tipification homologation fails.
     
-    Raised when the system cannot map a client-specific tipificacion
-    to a standardized homologated tipificacion.
+    This exception is raised when the system cannot map
+    a client-specific tipification to the standard homologated value.
     
-    Attributes:
-        tipificacion_original: Original client-specific tipificacion
-        cliente_id: ID of the client whose tipificacion failed
-        
     Examples:
-        >>> raise TipificacionHomologacionError(
-        ...     tipificacion_original="UNKNOWN_TIP",
-        ...     cliente_id="movistar-peru"
+        >>> raise HomologacionError(
+        ...     "TIPO_DESCONOCIDO",
+        ...     "movistar-peru"
         ... )
     """
     
-    def __init__(self, tipificacion_original: str, cliente_id: str = None):
+    def __init__(
+        self,
+        tipificacion_original: str,
+        cliente_codigo: str,
+        message: Optional[str] = None
+    ) -> None:
+        """Initialize homologation error.
+        
+        Args:
+            tipificacion_original: Original client tipification
+            cliente_codigo: Client code where error occurred
+            message: Custom error message
+        """
+        if message is None:
+            message = (
+                f"No se pudo homologar tipificación '{tipificacion_original}' "
+                f"para cliente '{cliente_codigo}'"
+            )
+        
+        super().__init__(
+            message=message,
+            code="HOMOLOGACION_ERROR",
+            context={
+                "tipificacion_original": tipificacion_original,
+                "cliente_codigo": cliente_codigo
+            }
+        )
         self.tipificacion_original = tipificacion_original
-        self.cliente_id = cliente_id
-        
-        message = f"No se pudo homologar tipificación '{tipificacion_original}'"
-        if cliente_id:
-            message += f" para cliente '{cliente_id}'"
-            
-        super().__init__(message, entity_type="Gestion", field="tipificacion_homologada")
+        self.cliente_codigo = cliente_codigo
 
 
-class DocumentoInvalidoError(DomainValidationError):
-    """Exception raised when documento format is invalid.
+class ReglaNegocioViolada(DomainException):
+    """Exception raised when a business rule is violated.
     
-    Raised when a document identifier doesn't meet the format
-    requirements for its type and country.
+    This is a generic exception for business rule violations
+    that don't fit into more specific exception types.
     
-    Attributes:
-        documento: Invalid document number
-        tipo: Document type (DNI, CC, etc.)
-        pais: Country code
-        
     Examples:
-        >>> raise DocumentoInvalidoError(
-        ...     documento="abc123",
-        ...     tipo="DNI",
-        ...     pais="PE"
+        >>> raise ReglaNegocioViolada(
+        ...     "No se puede procesar pago mayor al saldo actual",
+        ...     "PAGO_EXCEDE_SALDO",
+        ...     {"pago": 1000.0, "saldo": 500.0}
         ... )
     """
     
-    def __init__(self, documento: str, tipo: str = None, pais: str = None):
-        self.documento = documento
-        self.tipo = tipo
-        self.pais = pais
+    def __init__(
+        self,
+        message: str,
+        code: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Initialize business rule violation.
         
-        message = f"Formato de documento inválido: '{documento}'"
-        if tipo and pais:
-            message += f" para tipo '{tipo}' en país '{pais}'"
-            
-        super().__init__(message, entity_type="DocumentoIdentidad", field="numero")
+        Args:
+            message: Description of the violated rule
+            code: Specific rule violation code
+            context: Additional context about the violation
+        """
+        super().__init__(
+            message=message,
+            code=code or "REGLA_NEGOCIO_VIOLADA",
+            context=context
+        )
 
 
-class BusinessRuleViolation(DomainValidationError):
-    """Exception raised when a domain business rule is violated.
+class ConfiguracionInvalida(DomainException):
+    """Exception raised when client configuration is invalid.
     
-    Generic exception for business rule violations that don't fit
-    into more specific exception categories.
-    
-    Attributes:
-        rule_name: Name of the business rule that was violated
-        context: Additional context about the violation
-        
-    Examples:
-        >>> raise BusinessRuleViolation(
-        ...     "Cliente debe tener al menos un medio de contacto",
-        ...     rule_name="ContactabilityRule",
-        ...     context={"cliente_id": "12345"}
-        ... )
+    This exception is raised when client configuration
+    violates validation rules or contains inconsistent data.
     """
     
-    def __init__(self, message: str, rule_name: str = None, context: dict = None):
-        self.rule_name = rule_name
-        self.context = context or {}
+    def __init__(
+        self,
+        campo: str,
+        valor: Any,
+        razon: str
+    ) -> None:
+        """Initialize configuration validation error.
         
-        super().__init__(message)
+        Args:
+            campo: Configuration field that is invalid
+            valor: Invalid value
+            razon: Reason why the value is invalid
+        """
+        message = f"Configuración inválida en campo '{campo}': {razon}"
+        super().__init__(
+            message=message,
+            code="CONFIGURACION_INVALIDA",
+            context={
+                "campo": campo,
+                "valor": valor,
+                "razon": razon
+            }
+        )
+        self.campo = campo
+        self.valor = valor
+        self.razon = razon
+
+
+class OperacionNoPermitida(DomainException):
+    """Exception raised when an operation is not allowed.
+    
+    This exception is raised when attempting to perform
+    an operation that is not permitted given the current state.
+    """
+    
+    def __init__(
+        self,
+        operacion: str,
+        estado_actual: str,
+        razon: Optional[str] = None
+    ) -> None:
+        """Initialize operation not permitted error.
         
-    def __str__(self):
-        base_message = super().__str__()
-        if self.rule_name:
-            return f"[{self.rule_name}] {base_message}"
-        return base_message
+        Args:
+            operacion: Operation that was attempted
+            estado_actual: Current state that prevents the operation
+            razon: Additional reason why operation is not permitted
+        """
+        message = f"Operación '{operacion}' no permitida en estado '{estado_actual}'"
+        if razon:
+            message += f": {razon}"
+        
+        super().__init__(
+            message=message,
+            code="OPERACION_NO_PERMITIDA",
+            context={
+                "operacion": operacion,
+                "estado_actual": estado_actual,
+                "razon": razon
+            }
+        )
+        self.operacion = operacion
+        self.estado_actual = estado_actual
+        self.razon = razon

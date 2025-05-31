@@ -1,12 +1,13 @@
 """Gestion domain entity.
 
-Entity representing a collection management action performed on a customer.
-Supports cross-client tipificacion homologation and business rules.
+Represents a collection management action performed on a customer.
+This entity encapsulates business rules about contact effectiveness,
+commitment tracking, and collection outcomes.
 """
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Dict, Any
 from uuid import uuid4
 
 from ..value_objects.enums import CanalContacto, TipificacionHomologada
@@ -14,23 +15,10 @@ from ..value_objects.enums import CanalContacto, TipificacionHomologada
 
 @dataclass
 class Gestion:
-    """Entidad que representa una gestión de cobranza.
+    """Entity representing a collection management action.
     
-    Esta entidad maneja las acciones de cobranza realizadas sobre clientes,
-    incluyendo la homologación de tipificaciones entre diferentes clientes
-    (Movistar usa "CONT_COMP", Claro usa "CONTACTO_COMPROMISO", etc.)
-    
-    Attributes:
-        id: Identificador único de la gestión (UUID)
-        documento_cliente: Documento del cliente gestionado (FK)
-        fecha: Timestamp de cuando se realizó la gestión
-        canal: Canal utilizado para el contacto
-        ejecutivo: Nombre del ejecutivo que realizó la gestión
-        tipificacion_original: Tipificación específica del cliente
-        tipificacion_homologada: Tipificación standardizada cross-client
-        es_contacto: Si se logró contacto efectivo con el cliente
-        es_compromiso: Si el cliente comprometió realizar pago
-        observaciones: Notas adicionales de la gestión
+    This entity tracks all collection activities performed on customers,
+    including contact attempts, outcomes, and follow-up requirements.
     
     Examples:
         >>> from datetime import datetime
@@ -39,112 +27,174 @@ class Gestion:
         ...     fecha=datetime.now(),
         ...     canal=CanalContacto.CALL,
         ...     ejecutivo="Ana García",
-        ...     tipificacion_original="CONT_COMP",  # Específico Movistar
-        ...     tipificacion_homologada=TipificacionHomologada.COMPROMISO_PAGO.value,
+        ...     tipificacion_original="CONT_COMP",
+        ...     tipificacion_homologada=TipificacionHomologada.COMPROMISO_PAGO,
         ...     es_contacto=True,
         ...     es_compromiso=True
         ... )
         >>> gestion.es_gestion_exitosa()
         True
+        >>> gestion.requiere_seguimiento()
+        True
     """
     
-    documento_cliente: str
-    fecha: datetime
-    canal: CanalContacto
-    ejecutivo: str
-    tipificacion_original: str
-    tipificacion_homologada: str
-    es_contacto: bool
-    es_compromiso: bool
-    id: str = None
-    observaciones: Optional[str] = None
+    documento_cliente: str  # FK to Cliente entity
+    fecha: datetime  # When the management action occurred
+    canal: CanalContacto  # Communication channel used
+    ejecutivo: str  # Name of the executive who performed the action
+    tipificacion_original: str  # Client-specific tipification
+    tipificacion_homologada: TipificacionHomologada  # Standardized tipification
+    es_contacto: bool  # Whether effective contact was made
+    es_compromiso: bool  # Whether customer committed to payment
+    id: str = None  # UUID for the management action
+    observaciones: Optional[str] = None  # Additional notes
+    monto_comprometido: Optional[float] = None  # Committed payment amount
+    fecha_compromiso: Optional[datetime] = None  # When payment was promised
+    numero_intentos: int = 1  # Number of contact attempts
+    duracion_minutos: Optional[int] = None  # Duration of contact
+    metadata: Optional[Dict[str, Any]] = None  # Additional client-specific data
     
-    def __post_init__(self):
-        """Generate ID and validate entity constraints."""
+    def __post_init__(self) -> None:
+        """Initialize calculated fields and validate invariants."""
         if self.id is None:
             self.id = str(uuid4())
-            
-        if not self.documento_cliente or not self.documento_cliente.strip():
-            raise ValueError("El documento del cliente no puede estar vacío")
-            
-        if not self.ejecutivo or not self.ejecutivo.strip():
-            raise ValueError("El ejecutivo no puede estar vacío")
-            
-        if not self.tipificacion_original or not self.tipificacion_original.strip():
-            raise ValueError("La tipificación original no puede estar vacía")
-            
-        if not self.tipificacion_homologada or not self.tipificacion_homologada.strip():
-            raise ValueError("La tipificación homologada no puede estar vacía")
-            
-        # Validate tipificacion_homologada is a valid enum value
-        valid_tipificaciones = [t.value for t in TipificacionHomologada]
-        if self.tipificacion_homologada not in valid_tipificaciones:
-            raise ValueError(
-                f"Tipificación homologada inválida: {self.tipificacion_homologada}. "
-                f"Válidas: {valid_tipificaciones}"
-            )
+        
+        # Validation rules
+        if not self.documento_cliente.strip():
+            raise ValueError("Documento cliente no puede estar vacío")
+        if not self.ejecutivo.strip():
+            raise ValueError("Ejecutivo no puede estar vacío")
+        if self.numero_intentos < 1:
+            raise ValueError("Número de intentos debe ser mayor a 0")
+        
+        # Business rule: If there's a commitment, there must be contact
+        if self.es_compromiso and not self.es_contacto:
+            raise ValueError("No puede haber compromiso sin contacto efectivo")
+        
+        # Business rule: Commitment amount should be positive if specified
+        if self.monto_comprometido is not None and self.monto_comprometido <= 0:
+            raise ValueError("Monto comprometido debe ser positivo")
     
     def es_gestion_exitosa(self) -> bool:
-        """Business rule: gestión exitosa si hay contacto y compromiso.
+        """Determine if the management action was successful.
+        
+        Business rule: A management action is successful if effective
+        contact was made AND customer committed to payment.
         
         Returns:
-            True si la gestión logró contacto efectivo y compromiso de pago
+            True if management was successful
             
         Examples:
-            >>> gestion = Gestion(
-            ...     documento_cliente="12345",
-            ...     fecha=datetime.now(),
-            ...     canal=CanalContacto.CALL,
-            ...     ejecutivo="Ana",
-            ...     tipificacion_original="CONT_COMP",
-            ...     tipificacion_homologada=TipificacionHomologada.COMPROMISO_PAGO.value,
-            ...     es_contacto=True,
-            ...     es_compromiso=True
-            ... )
+            >>> gestion = Gestion(..., es_contacto=True, es_compromiso=True)
             >>> gestion.es_gestion_exitosa()
             True
         """
         return self.es_contacto and self.es_compromiso
     
-    def es_contacto_efectivo(self) -> bool:
-        """Business rule: contacto efectivo independiente de compromiso.
-        
-        Returns:
-            True si se logró contactar al cliente, sin importar resultado
-        """
-        return self.es_contacto
-    
     def requiere_seguimiento(self) -> bool:
-        """Business rule: determina si gestión requiere seguimiento.
+        """Determine if this management action requires follow-up.
+        
+        Business rule: Follow-up is required if customer committed
+        to payment or if contact was made but no commitment obtained.
         
         Returns:
-            True si hubo contacto pero no compromiso (requiere follow-up)
+            True if follow-up is required
         """
-        return self.es_contacto and not self.es_compromiso
+        return self.es_compromiso or (
+            self.es_contacto and 
+            self.tipificacion_homologada not in [
+                TipificacionHomologada.NO_INTERESADO,
+                TipificacionHomologada.DISPUTA_DEUDA
+            ]
+        )
     
-    def es_canal_automatizado(self) -> bool:
-        """Business rule: determina si el canal es automatizado.
+    def es_contacto_efectivo(self) -> bool:
+        """Determine if contact was effective.
+        
+        Business rule: Contact is effective if customer was reached
+        and conversation was meaningful (not wrong number, etc.).
         
         Returns:
-            True si el canal no requiere intervención humana directa
+            True if contact was effective
         """
-        canales_automatizados = {
-            CanalContacto.VOICEBOT,
+        return (
+            self.es_contacto and 
+            self.tipificacion_homologada != TipificacionHomologada.NUMERO_ERRADO
+        )
+    
+    def calcular_productividad_score(self) -> float:
+        """Calculate productivity score for this management action.
+        
+        Business rule: Score based on contact success, commitment,
+        and efficiency metrics.
+        
+        Returns:
+            Productivity score between 0.0 and 1.0
+        """
+        score = 0.0
+        
+        # Base score for contact
+        if self.es_contacto_efectivo():
+            score += 0.4
+        
+        # Bonus for commitment
+        if self.es_compromiso:
+            score += 0.4
+        
+        # Efficiency bonus (fewer attempts = higher score)
+        if self.numero_intentos == 1:
+            score += 0.2
+        elif self.numero_intentos <= 3:
+            score += 0.1
+        
+        return min(score, 1.0)
+    
+    def es_canal_digital(self) -> bool:
+        """Determine if digital channel was used.
+        
+        Returns:
+            True if channel is digital (email, SMS, WhatsApp)
+        """
+        return self.canal in [
             CanalContacto.EMAIL,
             CanalContacto.SMS,
             CanalContacto.WHATSAPP
-        }
-        return self.canal in canales_automatizados
+        ]
     
-    def obtener_efectividad_canal(self) -> str:
-        """Business rule: clasifica efectividad según canal y resultado.
+    def tiempo_desde_gestion(self) -> int:
+        """Calculate days since this management action.
         
         Returns:
-            Clasificación de efectividad: "ALTA", "MEDIA", "BAJA"
+            Number of days since management action
         """
-        if self.es_gestion_exitosa():
-            return "ALTA"
-        elif self.es_contacto_efectivo():
-            return "MEDIA" 
-        else:
-            return "BAJA"
+        return (datetime.now() - self.fecha).days
+    
+    def es_compromiso_vencido(self) -> bool:
+        """Check if payment commitment is overdue.
+        
+        Returns:
+            True if commitment date has passed without payment
+        """
+        if not self.es_compromiso or not self.fecha_compromiso:
+            return False
+        
+        return datetime.now() > self.fecha_compromiso
+    
+    def __str__(self) -> str:
+        """String representation of the management action."""
+        return (
+            f"Gestion(cliente={self.documento_cliente}, "
+            f"fecha={self.fecha.strftime('%Y-%m-%d')}, "
+            f"canal={self.canal.value}, "
+            f"exitosa={self.es_gestion_exitosa()})"
+        )
+    
+    def __eq__(self, other) -> bool:
+        """Equality based on ID."""
+        if not isinstance(other, Gestion):
+            return False
+        return self.id == other.id
+    
+    def __hash__(self) -> int:
+        """Hash based on ID."""
+        return hash(self.id)

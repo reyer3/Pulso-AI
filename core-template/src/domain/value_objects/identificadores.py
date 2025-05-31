@@ -1,7 +1,7 @@
-"""Domain identifier value objects.
+"""Domain identifiers and value objects.
 
-Value objects for handling different types of identifiers used across
-the multi-client system with proper validation.
+This module contains value objects that represent
+identifiers and other immutable concepts in the domain.
 """
 
 from dataclasses import dataclass
@@ -9,18 +9,13 @@ from typing import Optional
 import re
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True)  # Immutable value object
 class DocumentoIdentidad:
-    """Value object para documentos de identidad.
+    """Value object representing customer identity document.
     
-    Maneja diferentes tipos de documentos de identidad con validación
-    específica por país/cliente, manteniendo compatibilidad cross-client.
+    This value object encapsulates document validation rules
+    and formatting that may vary by country/client.
     
-    Attributes:
-        numero: Número del documento
-        tipo: Tipo de documento ("DNI", "CC", "DPI", "CI", "PASSPORT")
-        pais: Código de país ISO ("PE", "CO", "GT")
-        
     Examples:
         >>> doc = DocumentoIdentidad("12345678", "DNI", "PE")
         >>> doc.es_valido()
@@ -29,140 +24,155 @@ class DocumentoIdentidad:
         'DNI: 12345678 (PE)'
     """
     
-    numero: str
-    tipo: str
-    pais: str
+    numero: str  # Document number
+    tipo: str  # Document type (DNI, CC, RUT, etc.)
+    pais: Optional[str] = None  # Country code (PE, CO, GT, etc.)
     
-    def __post_init__(self):
-        """Validate documento constraints."""
-        if not self.numero or not self.numero.strip():
-            raise ValueError("El número de documento no puede estar vacío")
-            
-        if not self.tipo or not self.tipo.strip():
-            raise ValueError("El tipo de documento no puede estar vacío")
-            
-        if not self.pais or not self.pais.strip():
-            raise ValueError("El país no puede estar vacío")
-            
-        # Validate tipo values
-        tipos_validos = {"DNI", "CC", "DPI", "CI", "PASSPORT", "RUT", "RUN"}
-        if self.tipo.upper() not in tipos_validos:
-            raise ValueError(
-                f"Tipo de documento inválido: {self.tipo}. "
-                f"Válidos: {tipos_validos}"
-            )
-            
-        # Validate pais codes
-        paises_validos = {"PE", "CO", "GT", "CL", "AR", "MX", "EC"}
-        if self.pais.upper() not in paises_validos:
-            raise ValueError(
-                f"Código de país inválido: {self.pais}. "
-                f"Válidos: {paises_validos}"
-            )
-            
-        # Normalize values
-        object.__setattr__(self, 'tipo', self.tipo.upper())
-        object.__setattr__(self, 'pais', self.pais.upper())
-        object.__setattr__(self, 'numero', self.numero.strip())
+    def __post_init__(self) -> None:
+        """Validate document invariants."""
+        if not self.numero.strip():
+            raise ValueError("Número de documento no puede estar vacío")
+        if not self.tipo.strip():
+            raise ValueError("Tipo de documento no puede estar vacío")
+        
+        # Remove spaces and special characters for validation
+        numero_limpio = re.sub(r'[^0-9A-Za-z]', '', self.numero)
+        if not numero_limpio:
+            raise ValueError("Documento debe contener caracteres alfanuméricos")
     
     def es_valido(self) -> bool:
-        """Valida formato del documento según tipo y país.
+        """Validate document based on country rules.
         
         Returns:
-            True si el formato es válido
+            True if document format is valid
             
-        Examples:
-            >>> DocumentoIdentidad("12345678", "DNI", "PE").es_valido()
-            True
-            >>> DocumentoIdentidad("abc", "DNI", "PE").es_valido()
-            False
+        Note:
+            This is a basic validation. Real implementation
+            would include country-specific validation rules.
         """
-        try:
-            return self._validar_formato_por_tipo()
-        except Exception:
-            return False
-    
-    def _validar_formato_por_tipo(self) -> bool:
-        """Validación específica por tipo de documento."""
-        if self.tipo == "DNI" and self.pais == "PE":
-            # DNI Perú: 8 dígitos
-            return re.match(r'^\d{8}$', self.numero) is not None
-            
-        elif self.tipo == "CC" and self.pais == "CO":
-            # Cédula Colombia: 6-10 dígitos
-            return re.match(r'^\d{6,10}$', self.numero) is not None
-            
-        elif self.tipo == "DPI" and self.pais == "GT":
-            # DPI Guatemala: 13 dígitos
-            return re.match(r'^\d{13}$', self.numero) is not None
-            
-        elif self.tipo == "PASSPORT":
-            # Passport: formato alfanumérico internacional
-            return re.match(r'^[A-Z0-9]{6,12}$', self.numero.upper()) is not None
-            
+        numero_limpio = re.sub(r'[^0-9A-Za-z]', '', self.numero)
+        
+        # Basic length validation by country
+        if self.pais == "PE":  # Peru DNI
+            return len(numero_limpio) == 8 and numero_limpio.isdigit()
+        elif self.pais == "CO":  # Colombia CC
+            return 6 <= len(numero_limpio) <= 11 and numero_limpio.isdigit()
+        elif self.pais == "GT":  # Guatemala DPI
+            return len(numero_limpio) == 13 and numero_limpio.isdigit()
         else:
-            # Validación genérica: al menos debe ser alfanumérico
-            return re.match(r'^[A-Z0-9]{4,15}$', self.numero.upper()) is not None
+            # Generic validation - at least 6 characters
+            return len(numero_limpio) >= 6
+    
+    def numero_normalizado(self) -> str:
+        """Get normalized document number.
+        
+        Returns:
+            Document number without spaces or special characters
+        """
+        return re.sub(r'[^0-9A-Za-z]', '', self.numero)
     
     def formato_display(self) -> str:
-        """Formato legible para mostrar en UI.
+        """Format document for display.
         
         Returns:
-            String formateado para display
+            Formatted string for UI display
             
         Examples:
             >>> doc = DocumentoIdentidad("12345678", "DNI", "PE")
             >>> doc.formato_display()
             'DNI: 12345678 (PE)'
         """
-        return f"{self.tipo}: {self.numero} ({self.pais})"
+        base = f"{self.tipo}: {self.numero}"
+        if self.pais:
+            base += f" ({self.pais})"
+        return base
     
-    def formato_busqueda(self) -> str:
-        """Formato normalizado para búsquedas en base de datos.
+    def es_tipo_cedula(self) -> bool:
+        """Check if document is a national ID.
         
         Returns:
-            String normalizado sin espacios ni caracteres especiales
+            True for national identity documents
+        """
+        tipos_cedula = ["DNI", "CC", "DPI", "CI", "RUT"]
+        return self.tipo.upper() in tipos_cedula
+    
+    def __str__(self) -> str:
+        """String representation."""
+        return self.numero_normalizado()
+
+
+@dataclass(frozen=True)
+class CodigoCliente:
+    """Value object for client identification codes.
+    
+    Used to identify different clients in the multi-tenant system.
+    
+    Examples:
+        >>> codigo = CodigoCliente("movistar-peru")
+        >>> codigo.es_valido()
+        True
+        >>> codigo.pais
+        'PE'
+    """
+    
+    codigo: str  # Client code (e.g., "movistar-peru")
+    
+    def __post_init__(self) -> None:
+        """Validate client code format."""
+        if not self.codigo:
+            raise ValueError("Código de cliente no puede estar vacío")
+        
+        # Client codes should be lowercase with hyphens
+        if not re.match(r'^[a-z0-9-]+$', self.codigo):
+            raise ValueError(
+                "Código de cliente debe contener solo letras minúsculas, "
+                "números y guiones"
+            )
+    
+    def es_valido(self) -> bool:
+        """Validate client code format.
+        
+        Returns:
+            True if code format is valid
+        """
+        return bool(re.match(r'^[a-z0-9-]+$', self.codigo))
+    
+    @property
+    def empresa(self) -> str:
+        """Extract company name from code.
+        
+        Returns:
+            Company name portion of the code
             
         Examples:
-            >>> doc = DocumentoIdentidad(" 123-456-78 ", "DNI", "PE")
-            >>> doc.formato_busqueda()
-            '12345678'
+            >>> CodigoCliente("movistar-peru").empresa
+            'movistar'
         """
-        # Remove spaces, hyphens, and other common separators
-        return re.sub(r'[\s\-\.]+', '', self.numero)
+        return self.codigo.split('-')[0]
     
-    def obtener_digito_verificador(self) -> Optional[str]:
-        """Calcula dígito verificador si aplica para el tipo de documento.
+    @property
+    def pais(self) -> Optional[str]:
+        """Extract country from code.
         
         Returns:
-            Dígito verificador o None si no aplica
+            Country code if present in client code
+            
+        Examples:
+            >>> CodigoCliente("movistar-peru").pais
+            'PE'
         """
-        if self.tipo == "CC" and self.pais == "CO":
-            # Algoritmo para cédula colombiana
-            return self._calcular_dv_colombia()
-        elif self.tipo == "DPI" and self.pais == "GT":
-            # Algoritmo para DPI guatemalteco
-            return self._calcular_dv_guatemala()
-        else:
-            return None
+        parts = self.codigo.split('-')
+        if len(parts) >= 2:
+            pais_map = {
+                'peru': 'PE',
+                'colombia': 'CO', 
+                'guatemala': 'GT',
+                'chile': 'CL',
+                'ecuador': 'EC'
+            }
+            return pais_map.get(parts[1])
+        return None
     
-    def _calcular_dv_colombia(self) -> str:
-        """Calcula dígito verificador para cédula colombiana."""
-        # Simplified algorithm - in production would use official algorithm
-        if not self.numero.isdigit():
-            return "0"
-            
-        total = sum(
-            int(digit) * (i + 1) 
-            for i, digit in enumerate(reversed(self.numero))
-        )
-        return str(total % 10)
-    
-    def _calcular_dv_guatemala(self) -> str:
-        """Calcula dígito verificador para DPI guatemalteco."""
-        # Simplified algorithm - in production would use official algorithm
-        if not self.numero.isdigit() or len(self.numero) < 13:
-            return "0"
-            
-        # Use last digit as verification
-        return self.numero[-1]
+    def __str__(self) -> str:
+        """String representation."""
+        return self.codigo

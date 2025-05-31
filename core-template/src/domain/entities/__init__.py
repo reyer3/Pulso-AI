@@ -1,13 +1,10 @@
 """Domain entities package.
 
-Contains the core business entities that represent the fundamental concepts
-of the debt collection/cobranza domain. These entities are pure Python classes
-with zero external dependencies, containing business logic and rules.
+This package contains the core business entities that represent
+the fundamental concepts in the debt collection domain.
 
-Entities:
-    Cliente: Core entity representing a customer with debt
-    Gestion: Entity representing a collection management action
-    Metrica: Value object for calculated metrics
+Entities are pure Python objects with business behavior,
+following Domain-Driven Design principles.
 """
 
 from .cliente import Cliente
