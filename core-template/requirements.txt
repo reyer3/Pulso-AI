@@ -1,0 +1,8 @@
+# This file has been removed to avoid conflicts with pyproject.toml
+# 
+# Use instead:
+#   pip install -e .[dev]     # For development
+#   pip install -e .[prod]    # For production
+#   pip install -e .          # Base dependencies only
+#
+# See requirements/README.md for migration guide

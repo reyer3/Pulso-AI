@@ -6,7 +6,7 @@ version: '3.8'
 services:
   # PostgreSQL Database for development
   postgres:
-    image: postgres:15-alpine
+    image: timescale/timescaledb-ha:pg17
     container_name: pulso-postgres
     environment:
       POSTGRES_DB: pulso_dev
@@ -16,8 +16,8 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./infrastructure/database/init:/docker-entrypoint-initdb.d
+      - postgres_data:/home/postgres/pgdata/data
+      - ./infrastructure/postgres:/docker-entrypoint-initdb.d
     networks:
       - pulso-network
     healthcheck:

@@ -45,7 +45,8 @@ interrogate==1.5.0           # Para docstring coverage
 # 🔐 SECURITY SCANNING
 # =====================================
 bandit==1.7.5
-safety==3.2.14               # FIXED: Updated from 2.4.0b2 to latest stable (resolves ruamel.yaml conflict)
+# FIXED: safety requires pydantic>=2.6.0 which is now satisfied by base.txt
+safety==3.2.14               # Compatible with pydantic>=2.6.0,<2.10.0
 
 # =====================================
 # 📊 CODE QUALITY & METRICS (Coverage is primary here)
