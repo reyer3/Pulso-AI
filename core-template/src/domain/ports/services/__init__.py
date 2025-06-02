@@ -1,28 +1,22 @@
-"""Service interfaces for domain operations.
+"""Service interfaces for business operations.
 
-This module contains service interfaces that define contracts
-for domain operations that don't naturally belong to a single
-entity or require external resources.
+Service ports define contracts for complex business operations
+that don't fit naturally into entity repositories. These services
+handle cross-cutting concerns and advanced business logic.
 
-Services vs Repositories:
-- Repositories: Data access operations for specific entities
-- Services: Domain operations, calculations, external integrations
+Key Services:
+    - MetricaCalculatorService: Dynamic metric calculations
+    - ConfigurationService: Multi-client configuration management
+    - NotificationService: Alerts and notifications
 
-Examples:
-    >>> from domain.ports.services import MetricaCalculatorService
-    >>> from domain.ports.services import ConfigurationService
-    >>> 
-    >>> class DashboardUseCase:
-    ...     def __init__(
-    ...         self,
-    ...         metrica_service: MetricaCalculatorService,
-    ...         config_service: ConfigurationService
-    ...     ):
-    ...         self.metrica_service = metrica_service
-    ...         self.config_service = config_service
+Architecture Benefits:
+    - Business logic centralization
+    - Client-specific customization via configuration
+    - Easy testing with mock implementations
+    - Performance optimization through service interfaces
 """
 
-from .metrica_calculator import MetricaCalculatorService
+from .metrica_calculator_service import MetricaCalculatorService
 from .configuration_service import ConfigurationService
 from .notification_service import NotificationService
 

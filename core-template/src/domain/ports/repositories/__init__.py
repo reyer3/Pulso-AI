@@ -1,25 +1,24 @@
-"""Repository interfaces for domain entities.
+"""Repository interfaces for data persistence.
 
-This module defines the contracts (ports) for data persistence
-operations. Each repository interface focuses on a specific
-entity or aggregate root.
+Repository ports define contracts for data access without
+specifying HOW data is stored or retrieved. This enables
+swapping between BigQuery, PostgreSQL, MySQL seamlessly.
 
-Key principles:
-- Interfaces are defined by domain needs, not infrastructure capabilities
-- All methods are async for scalability
-- Type hints are comprehensive for clarity
-- Methods are granular and focused
+Key Principles:
+    - Client-agnostic: Work with any data source
+    - Async by default: Support high-performance I/O
+    - Business-focused: Methods reflect domain needs
+    - Type-safe: Full type hints for better development experience
 
-Example:
-    >>> from domain.ports.repositories import ClienteRepository
-    >>> 
-    >>> class MyUseCase:
-    ...     def __init__(self, cliente_repo: ClienteRepository):
-    ...         self.cliente_repo = cliente_repo
-    ...     
-    ...     async def execute(self, documento: str):
-    ...         cliente = await self.cliente_repo.find_by_documento(documento)
-    ...         return cliente
+Example Multi-Client Usage:
+    # Same interface, different implementations
+    movistar_repo = BigQueryClienteRepository()  # BigQuery
+    claro_repo = PostgreSQLClienteRepository()   # PostgreSQL
+    tigo_repo = MySQLClienteRepository()         # MySQL
+    
+    # All implement same ClienteRepository interface
+    for repo in [movistar_repo, claro_repo, tigo_repo]:
+        clientes = await repo.find_clientes_en_mora(30)
 """
 
 from .base_repository import BaseRepository

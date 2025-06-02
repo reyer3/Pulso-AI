@@ -1,28 +1,14 @@
 """Notification service interface.
 
-Defines the contract for sending notifications and alerts
-related to collection activities, system events, and business
-rule violations.
+Defines contracts for alerts, notifications, and real-time communication.
+Handles operational alerts, performance notifications, and system events.
 """
 
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from enum import Enum
-
-from ...entities.cliente import Cliente
-from ...entities.gestion import Gestion
-from ...entities.metrica import Metrica
-
-
-class NotificationChannel(Enum):
-    """Channels available for sending notifications."""
-    EMAIL = "email"
-    SMS = "sms"
-    SLACK = "slack"
-    WEBHOOK = "webhook"
-    PUSH = "push"
-    IN_APP = "in_app"
+from dataclasses import dataclass
 
 
 class NotificationPriority(Enum):
@@ -33,188 +19,185 @@ class NotificationPriority(Enum):
     CRITICAL = "critical"
 
 
+class NotificationChannel(Enum):
+    """Notification delivery channels."""
+    EMAIL = "email"
+    SMS = "sms"
+    SLACK = "slack"
+    WEBHOOK = "webhook"
+    IN_APP = "in_app"
+    PUSH = "push"
+
+
+@dataclass
+class NotificationTemplate:
+    """Notification message template."""
+    id: str
+    title: str
+    message: str
+    priority: NotificationPriority
+    channels: List[NotificationChannel]
+    variables: Dict[str, str]  # Template variables
+
+
+@dataclass
+class NotificationRequest:
+    """Notification delivery request."""
+    template_id: str
+    recipient: str
+    variables: Dict[str, Any]
+    priority: NotificationPriority
+    channels: List[NotificationChannel]
+    scheduled_for: Optional[datetime] = None
+
+
 class NotificationService(ABC):
-    """Service interface for sending notifications and alerts.
+    """Service interface for notifications and alerts.
     
-    This service handles communication with agents, supervisors,
-    and administrators about important events, alerts, and
-    system notifications in the debt collection process.
+    This service handles all types of notifications including
+    operational alerts, performance notifications, and system events.
+    
+    Key Features:
+        - Multi-channel delivery (email, SMS, Slack, etc.)
+        - Template-based messages
+        - Priority-based routing
+        - Scheduled notifications
+        - Performance alert automation
     
     Examples:
-        >>> # Send critical client alert
-        >>> await notification_service.send_client_alert(
-        ...     cliente,
-        ...     "High debt client requires immediate attention",
-        ...     NotificationPriority.CRITICAL
+        >>> # Send performance alert
+        >>> await notification_service.send_performance_alert(
+        ...     "low_contact_rate",
+        ...     "Ana García",
+        ...     {"rate": 45.2, "threshold": 60.0}
         ... )
         >>> 
-        >>> # Send daily performance summary
-        >>> await notification_service.send_performance_summary(
-        ...     "ana.garcia@company.com",
-        ...     metricas_daily
+        >>> # Send daily summary
+        >>> await notification_service.send_daily_summary(
+        ...     "supervisor@company.com",
+        ...     summary_data
         ... )
     """
     
     @abstractmethod
-    async def send_client_alert(
-        self,
-        cliente: Cliente,
-        message: str,
-        priority: NotificationPriority,
-        recipients: Optional[List[str]] = None,
-        channels: Optional[List[NotificationChannel]] = None
-    ) -> bool:
-        """Send alert about specific client.
+    async def send_notification(
+        self, 
+        request: NotificationRequest
+    ) -> str:
+        """Send notification through specified channels.
+        
+        Delivers notification using template and variables
+        through one or more communication channels.
         
         Args:
-            cliente: Client that triggered the alert
-            message: Alert message content
-            priority: Alert priority level
-            recipients: Optional specific recipients
-            channels: Optional specific channels to use
+            request: Notification delivery request
             
         Returns:
-            True if alert was sent successfully
+            Notification ID for tracking
+            
+        Raises:
+            NotificationError: If delivery fails
             
         Examples:
-            >>> # Critical debt alert
-            >>> success = await service.send_client_alert(
-            ...     cliente,
-            ...     "Client debt exceeded $50,000 - requires legal action",
-            ...     NotificationPriority.CRITICAL,
-            ...     recipients=["supervisor@company.com"],
+            >>> request = NotificationRequest(
+            ...     template_id="performance_alert",
+            ...     recipient="manager@company.com",
+            ...     variables={"agent": "Ana García", "metric": "contact_rate"},
+            ...     priority=NotificationPriority.HIGH,
             ...     channels=[NotificationChannel.EMAIL, NotificationChannel.SLACK]
             ... )
+            >>> notification_id = await service.send_notification(request)
         """
         pass
     
     @abstractmethod
-    async def send_performance_summary(
+    async def send_performance_alert(
         self,
-        recipient: str,
-        metricas: List[Metrica],
-        periodo: str = "daily",
-        channel: NotificationChannel = NotificationChannel.EMAIL
-    ) -> bool:
-        """Send performance summary to agent or supervisor.
-        
-        Args:
-            recipient: Email or user ID of recipient
-            metricas: List of calculated metrics
-            periodo: Period covered ("daily", "weekly", "monthly")
-            channel: Communication channel to use
-            
-        Returns:
-            True if summary was sent successfully
-            
-        Examples:
-            >>> daily_metrics = [
-            ...     tasa_contactabilidad,
-            ...     pdps_por_hora,
-            ...     tasa_conversion
-            ... ]
-            >>> await service.send_performance_summary(
-            ...     "ana.garcia@company.com",
-            ...     daily_metrics,
-            ...     periodo="daily"
-            ... )
-        """
-        pass
-    
-    @abstractmethod
-    async def send_gestion_followup_reminder(
-        self,
-        gestion: Gestion,
+        alert_type: str,
         ejecutivo: str,
-        dias_desde_gestion: int,
-        channel: NotificationChannel = NotificationChannel.EMAIL
-    ) -> bool:
-        """Send follow-up reminder for collection activity.
+        metric_data: Dict[str, Any],
+        priority: NotificationPriority = NotificationPriority.MEDIUM
+    ) -> str:
+        """Send performance-related alert.
+        
+        Sends automated alert when agent performance
+        falls below or exceeds defined thresholds.
         
         Args:
-            gestion: Original collection activity
-            ejecutivo: Agent responsible for follow-up
-            dias_desde_gestion: Days since original activity
-            channel: Communication channel to use
+            alert_type: Type of performance alert
+            ejecutivo: Agent name
+            metric_data: Performance metric data
+            priority: Alert priority level
             
         Returns:
-            True if reminder was sent successfully
+            Notification ID
+            
+        Alert Types:
+            - "low_contact_rate": Contact rate below threshold
+            - "high_productivity": Exceptional performance
+            - "missed_target": Daily/weekly target missed
+            - "commitment_overdue": Payment commitments overdue
             
         Examples:
-            >>> # Remind about payment promise follow-up
-            >>> await service.send_gestion_followup_reminder(
-            ...     gestion_compromiso,
-            ...     "ana.garcia@company.com",
-            ...     dias_desde_gestion=3
+            >>> # Low contact rate alert
+            >>> await service.send_performance_alert(
+            ...     "low_contact_rate",
+            ...     "Carlos López",
+            ...     {
+            ...         "current_rate": 45.2,
+            ...         "threshold": 60.0,
+            ...         "period": "today",
+            ...         "total_attempts": 25
+            ...     },
+            ...     NotificationPriority.HIGH
             ... )
         """
         pass
     
     @abstractmethod
-    async def send_threshold_alert(
-        self,
-        metric_name: str,
-        current_value: float,
-        threshold_value: float,
-        threshold_type: str,  # "above", "below"
-        context: Dict[str, Any],
-        recipients: List[str]
-    ) -> bool:
-        """Send alert when metric threshold is violated.
-        
-        Args:
-            metric_name: Name of the metric
-            current_value: Current metric value
-            threshold_value: Threshold that was violated
-            threshold_type: Type of threshold violation
-            context: Additional context information
-            recipients: List of recipients for the alert
-            
-        Returns:
-            True if alert was sent successfully
-            
-        Examples:
-            >>> # Contactability below threshold
-            >>> await service.send_threshold_alert(
-            ...     "tasa_contactabilidad",
-            ...     current_value=45.0,
-            ...     threshold_value=50.0,
-            ...     threshold_type="below",
-            ...     context={"ejecutivo": "Carlos Ruiz", "fecha": "2025-06-01"},
-            ...     recipients=["supervisor@company.com"]
-            ... )
-        """
-        pass
-    
-    @abstractmethod
-    async def send_daily_digest(
+    async def send_daily_summary(
         self,
         recipient: str,
-        summary_data: Dict[str, Any],
-        date: datetime
-    ) -> bool:
-        """Send daily digest with key metrics and activities.
+        summary_data: Dict[str, Any]
+    ) -> str:
+        """Send daily performance summary.
+        
+        Sends comprehensive daily summary report
+        to supervisors and managers.
         
         Args:
-            recipient: Recipient email or user ID
-            summary_data: Dictionary with summary information
-            date: Date for the digest
+            recipient: Email address of recipient
+            summary_data: Daily performance data
             
         Returns:
-            True if digest was sent successfully
+            Notification ID
+            
+        Summary Data Structure:
+            {
+                "date": "2024-06-01",
+                "team_metrics": {
+                    "total_gestiones": 156,
+                    "total_contactos": 89,
+                    "total_compromisos": 34,
+                    "tasa_exito": 21.8
+                },
+                "top_performers": [
+                    {"ejecutivo": "Ana García", "compromisos": 8},
+                    {"ejecutivo": "Carlos López", "compromisos": 6}
+                ],
+                "alerts": [
+                    "Low contact rate: Juan Pérez (45%)"
+                ]
+            }
             
         Examples:
             >>> summary = {
-            ...     "total_gestiones": 150,
-            ...     "contactos_efectivos": 98,
-            ...     "compromisos": 35,
-            ...     "top_ejecutivo": "Ana García",
-            ...     "metricas_destacadas": [metrica1, metrica2]
+            ...     "date": "2024-06-01",
+            ...     "team_metrics": {"total_gestiones": 156, "tasa_exito": 21.8},
+            ...     "top_performers": [{"ejecutivo": "Ana García", "compromisos": 8}]
             ... }
-            >>> await service.send_daily_digest(
-            ...     "manager@company.com",
-            ...     summary,
-            ...     datetime.now()
+            >>> await service.send_daily_summary(
+            ...     "supervisor@company.com", summary
             ... )
         """
         pass
@@ -222,28 +205,38 @@ class NotificationService(ABC):
     @abstractmethod
     async def send_system_alert(
         self,
+        alert_type: str,
         message: str,
-        priority: NotificationPriority,
-        error_details: Optional[Dict[str, Any]] = None,
-        recipients: Optional[List[str]] = None
-    ) -> bool:
-        """Send system-level alert (errors, warnings, etc.).
+        priority: NotificationPriority = NotificationPriority.MEDIUM,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> str:
+        """Send system-level alert.
+        
+        Sends technical alerts about system status,
+        errors, or operational issues.
         
         Args:
+            alert_type: Type of system alert
             message: Alert message
-            priority: Alert priority level
-            error_details: Optional error details
-            recipients: Optional specific recipients (defaults to admins)
+            priority: Alert priority
+            metadata: Additional alert context
             
         Returns:
-            True if alert was sent successfully
+            Notification ID
+            
+        System Alert Types:
+            - "database_connection_error": DB connectivity issues
+            - "high_error_rate": Increased error frequency
+            - "slow_performance": System performance degradation
+            - "data_sync_failure": ETL or sync process failure
             
         Examples:
-            >>> # Database connection error
+            >>> # Database connection alert
             >>> await service.send_system_alert(
-            ...     "BigQuery connection failed for Movistar client",
+            ...     "database_connection_error",
+            ...     "Unable to connect to BigQuery for client movistar-peru",
             ...     NotificationPriority.CRITICAL,
-            ...     error_details={"client_id": "movistar-peru", "error_code": "AUTH_FAILED"}
+            ...     {"client_id": "movistar-peru", "error_code": "CONN_TIMEOUT"}
             ... )
         """
         pass
@@ -251,84 +244,101 @@ class NotificationService(ABC):
     @abstractmethod
     async def schedule_notification(
         self,
-        message: str,
-        recipients: List[str],
-        send_at: datetime,
-        channel: NotificationChannel = NotificationChannel.EMAIL,
-        priority: NotificationPriority = NotificationPriority.MEDIUM
+        request: NotificationRequest,
+        scheduled_for: datetime
     ) -> str:
-        """Schedule notification to be sent at specific time.
+        """Schedule notification for future delivery.
+        
+        Schedules notification to be sent at specified time.
+        Useful for reminders, follow-ups, and recurring reports.
         
         Args:
-            message: Notification message
-            recipients: List of recipients
-            send_at: When to send the notification
-            channel: Communication channel
-            priority: Notification priority
+            request: Notification to schedule
+            scheduled_for: When to send the notification
             
         Returns:
-            Unique ID for the scheduled notification
+            Scheduled notification ID
             
         Examples:
             >>> # Schedule weekly report
-            >>> next_monday = datetime(2025, 6, 9, 9, 0)
-            >>> notification_id = await service.schedule_notification(
-            ...     "Weekly performance report available",
-            ...     ["team@company.com"],
-            ...     send_at=next_monday
+            >>> next_monday = datetime.now() + timedelta(days=7)
+            >>> request = NotificationRequest(
+            ...     template_id="weekly_report",
+            ...     recipient="manager@company.com",
+            ...     variables={"week_ending": "2024-06-07"},
+            ...     priority=NotificationPriority.LOW,
+            ...     channels=[NotificationChannel.EMAIL]
+            ... )
+            >>> scheduled_id = await service.schedule_notification(
+            ...     request, next_monday
             ... )
         """
         pass
     
     @abstractmethod
-    async def cancel_scheduled_notification(self, notification_id: str) -> bool:
-        """Cancel previously scheduled notification.
+    async def cancel_notification(self, notification_id: str) -> bool:
+        """Cancel scheduled notification.
+        
+        Cancels a previously scheduled notification
+        before it is delivered.
         
         Args:
             notification_id: ID of notification to cancel
             
         Returns:
-            True if cancellation was successful
-        """
-        pass
-    
-    @abstractmethod
-    async def get_notification_preferences(
-        self,
-        user_id: str
-    ) -> Dict[str, Any]:
-        """Get user's notification preferences.
-        
-        Args:
-            user_id: User identifier
-            
-        Returns:
-            Dictionary with user preferences
+            True if cancellation successful
             
         Examples:
-            >>> prefs = await service.get_notification_preferences("ana.garcia")
-            >>> # Returns: {
-            >>> #     "channels": ["email", "slack"],
-            >>> #     "daily_digest": True,
-            >>> #     "threshold_alerts": True,
-            >>> #     "quiet_hours": {"start": "22:00", "end": "08:00"}
-            >>> # }
+            >>> # Cancel scheduled notification
+            >>> success = await service.cancel_notification("notif_12345")
+            >>> assert success
         """
         pass
     
     @abstractmethod
-    async def update_notification_preferences(
+    async def get_notification_templates(self) -> List[NotificationTemplate]:
+        """Get available notification templates.
+        
+        Returns list of all available notification templates
+        for different types of messages.
+        
+        Returns:
+            List of notification templates
+            
+        Examples:
+            >>> templates = await service.get_notification_templates()
+            >>> performance_templates = [
+            ...     t for t in templates 
+            ...     if "performance" in t.id
+            ... ]
+        """
+        pass
+    
+    @abstractmethod
+    async def get_notification_history(
         self,
-        user_id: str,
-        preferences: Dict[str, Any]
-    ) -> bool:
-        """Update user's notification preferences.
+        recipient: Optional[str] = None,
+        start_date: Optional[datetime] = None,
+        limit: int = 100
+    ) -> List[Dict[str, Any]]:
+        """Get notification delivery history.
+        
+        Returns history of sent notifications with
+        delivery status and metadata.
         
         Args:
-            user_id: User identifier
-            preferences: New preferences
+            recipient: Filter by recipient
+            start_date: Filter by send date
+            limit: Maximum results
             
         Returns:
-            True if update was successful
+            List of notification history records
+            
+        Examples:
+            >>> # Recent notifications for manager
+            >>> history = await service.get_notification_history(
+            ...     recipient="manager@company.com",
+            ...     start_date=datetime.now() - timedelta(days=7)
+            ... )
         """
         pass

@@ -1,375 +1,356 @@
 """Gestion repository interface.
 
-Defines the contract for Gestion entity persistence operations,
-focused on debt collection activity tracking and analysis.
+Defines contracts for Gestion entity persistence and queries.
+Focused on collection management actions and productivity tracking.
 """
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import List, Optional, Dict, Any
 from datetime import datetime, date
 
-from .base_repository import BaseRepository
 from ...entities.gestion import Gestion
 from ...value_objects.enums import CanalContacto, TipificacionHomologada
+from .base_repository import BaseRepository
 
 
-class GestionRepository(BaseRepository[Gestion]):
-    """Repository interface for Gestion entity operations.
+class GestionRepository(BaseRepository[Gestion, str], ABC):
+    """Repository interface for Gestion entity persistence.
     
-    This interface defines all data access operations needed for
-    collection activity management. Methods support performance
-    analytics, agent productivity, and business intelligence use cases.
+    This interface defines all data access operations needed
+    for collection management tracking and productivity analysis.
+    
+    Key Features:
+        - Collection activity tracking
+        - Productivity metrics calculation
+        - Multi-dimensional filtering (ejecutivo, canal, fecha)
+        - Real-time dashboard support
     
     Examples:
-        >>> # Find successful collection activities
-        >>> exitosas = await repo.find_gestiones_exitosas(
-        ...     fecha_inicio=datetime(2025, 6, 1)
+        >>> # Daily productivity tracking
+        >>> gestiones_hoy = await repo.find_by_ejecutivo_and_date_range(
+        ...     "Ana García", datetime.today(), datetime.today()
         ... )
         >>> 
-        >>> # Get agent performance for specific date
-        >>> gestiones = await repo.find_by_ejecutivo_and_date(
-        ...     ejecutivo="Ana García",
-        ...     fecha=date.today()
+        >>> # Success rate analysis
+        >>> exitosas = await repo.find_gestiones_exitosas(
+        ...     datetime.now() - timedelta(days=30)
         ... )
     """
     
     @abstractmethod
     async def save_gestion(self, gestion: Gestion) -> str:
-        """Save new collection activity.
+        """Save new collection management action.
+        
+        Persists a new collection activity record.
+        Generates unique ID for tracking purposes.
         
         Args:
-            gestion: Gestion entity to save
+            gestion: Management action to save
             
         Returns:
-            Generated unique ID for the saved gestion
+            Generated ID for the saved gestion
+            
+        Raises:
+            RepositoryError: If save operation fails
+            ValidationError: If gestion data is invalid
             
         Examples:
-            >>> nueva_gestion = Gestion(...)
-            >>> gestion_id = await repo.save_gestion(nueva_gestion)
-            >>> print(f"Saved with ID: {gestion_id}")
+            >>> gestion = Gestion(
+            ...     documento_cliente="12345678",
+            ...     fecha=datetime.now(),
+            ...     canal=CanalContacto.CALL,
+            ...     ejecutivo="Ana García",
+            ...     tipificacion_original="CONT_COMP",
+            ...     tipificacion_homologada=TipificacionHomologada.COMPROMISO_PAGO,
+            ...     es_contacto=True,
+            ...     es_compromiso=True
+            ... )
+            >>> gestion_id = await repo.save_gestion(gestion)
         """
         pass
     
     @abstractmethod
-    async def find_by_cliente(
-        self,
-        documento_cliente: str,
-        limit: Optional[int] = None,
-        order_by_fecha: bool = True
-    ) -> List[Gestion]:
-        """Find all collection activities for specific client.
+    async def find_by_cliente(self, documento_cliente: str) -> List[Gestion]:
+        """Get all management actions for a customer.
+        
+        Returns complete history of collection activities
+        for a specific customer, ordered by fecha DESC.
         
         Args:
-            documento_cliente: Client's document number
-            limit: Maximum number of gestiones to return
-            order_by_fecha: Whether to order by date (newest first)
+            documento_cliente: Customer document number
             
         Returns:
-            List of gestiones for the client
+            List of management actions for customer
             
         Examples:
-            >>> # Last 10 activities for client
-            >>> gestiones = await repo.find_by_cliente(
-            ...     "12345678",
-            ...     limit=10
-            ... )
+            >>> # Customer interaction history
+            >>> historial = await repo.find_by_cliente("12345678")
+            >>> ultima_gestion = historial[0] if historial else None
         """
         pass
-    
+        
     @abstractmethod
     async def find_by_ejecutivo_and_date_range(
-        self,
-        ejecutivo: str,
-        fecha_inicio: datetime,
+        self, 
+        ejecutivo: str, 
+        fecha_inicio: datetime, 
         fecha_fin: datetime
     ) -> List[Gestion]:
-        """Find agent's activities within date range.
+        """Get management actions by agent and date range.
+        
+        Critical query for productivity tracking and daily reports.
+        Returns all activities performed by specific agent in date range.
         
         Args:
-            ejecutivo: Agent name
-            fecha_inicio: Start datetime (inclusive)
-            fecha_fin: End datetime (inclusive)
+            ejecutivo: Name of the collection agent
+            fecha_inicio: Start date (inclusive)
+            fecha_fin: End date (inclusive)
             
         Returns:
-            List of gestiones for agent in date range
+            List of management actions in date range
+            
+        Business Rules:
+            - Includes all tipification types
+            - Ordered by fecha ASC (chronological)
+            - Used for daily/weekly productivity reports
             
         Examples:
-            >>> # Agent's activities for today
-            >>> today_start = datetime.combine(date.today(), datetime.min.time())
-            >>> today_end = datetime.combine(date.today(), datetime.max.time())
-            >>> gestiones = await repo.find_by_ejecutivo_and_date_range(
-            ...     "Ana García",
-            ...     today_start,
-            ...     today_end
+            >>> # Today's work for Ana García
+            >>> hoy = datetime.now().date()
+            >>> gestiones_hoy = await repo.find_by_ejecutivo_and_date_range(
+            ...     "Ana García", 
+            ...     datetime.combine(hoy, datetime.min.time()),
+            ...     datetime.combine(hoy, datetime.max.time())
+            ... )
+            >>> 
+            >>> # Weekly performance
+            >>> semana_pasada = await repo.find_by_ejecutivo_and_date_range(
+            ...     "Carlos López", 
+            ...     datetime.now() - timedelta(days=7),
+            ...     datetime.now()
             ... )
         """
         pass
-    
-    @abstractmethod
-    async def find_by_ejecutivo_and_date(
-        self,
-        ejecutivo: str,
-        fecha: date
-    ) -> List[Gestion]:
-        """Find agent's activities for specific date.
         
-        Args:
-            ejecutivo: Agent name
-            fecha: Specific date
-            
-        Returns:
-            List of gestiones for agent on specified date
-            
-        Examples:
-            >>> # Agent's today activities
-            >>> gestiones = await repo.find_by_ejecutivo_and_date(
-            ...     "Ana García",
-            ...     date.today()
-            ... )
-        """
-        pass
-    
     @abstractmethod
     async def find_gestiones_exitosas(
-        self,
+        self, 
         fecha_inicio: datetime,
-        fecha_fin: Optional[datetime] = None
+        ejecutivo: Optional[str] = None
     ) -> List[Gestion]:
-        """Find successful collection activities.
+        """Find successful management actions since date.
+        
+        Returns management actions that resulted in customer
+        commitment or payment. Used for success rate calculation.
         
         Args:
-            fecha_inicio: Start datetime
-            fecha_fin: End datetime (if None, uses current time)
+            fecha_inicio: Start date for search
+            ejecutivo: Optional agent filter
             
         Returns:
-            List of successful gestiones (es_gestion_exitosa() == True)
+            List of successful management actions
+            
+        Business Rules:
+            - Success = es_contacto AND es_compromiso
+            - Includes COMPROMISO_PAGO, PAGO_INMEDIATO, ACUERDO_PAGO
+            - Excludes NO_CONTACTO, NO_INTERESADO
             
         Examples:
-            >>> # Successful activities in last 7 days
-            >>> from datetime import timedelta
-            >>> week_ago = datetime.now() - timedelta(days=7)
-            >>> exitosas = await repo.find_gestiones_exitosas(week_ago)
+            >>> # All successful actions this month
+            >>> mes_inicio = datetime.now().replace(day=1)
+            >>> exitosas = await repo.find_gestiones_exitosas(mes_inicio)
+            >>> 
+            >>> # Ana's successful actions
+            >>> ana_exitosas = await repo.find_gestiones_exitosas(
+            ...     mes_inicio, ejecutivo="Ana García"
+            ... )
         """
         pass
-    
+        
     @abstractmethod
-    async def count_by_canal(
-        self,
-        canal: CanalContacto,
-        fecha_inicio: Optional[datetime] = None,
-        fecha_fin: Optional[datetime] = None
-    ) -> int:
-        """Count activities by communication channel.
+    async def count_by_canal(self, canal: CanalContacto) -> int:
+        """Count management actions by communication channel.
+        
+        Returns total number of activities performed via
+        specific communication channel.
         
         Args:
             canal: Communication channel to count
-            fecha_inicio: Optional start datetime filter
-            fecha_fin: Optional end datetime filter
             
         Returns:
-            Number of gestiones using specified channel
+            Number of actions via specified channel
             
         Examples:
-            >>> # Total phone calls today
-            >>> today_start = datetime.combine(date.today(), datetime.min.time())
-            >>> calls_today = await repo.count_by_canal(
-            ...     CanalContacto.CALL,
-            ...     fecha_inicio=today_start
-            ... )
+            >>> # How many calls were made?
+            >>> total_calls = await repo.count_by_canal(CanalContacto.CALL)
+            >>> 
+            >>> # Digital channel usage
+            >>> emails = await repo.count_by_canal(CanalContacto.EMAIL)
+            >>> sms = await repo.count_by_canal(CanalContacto.SMS)
         """
         pass
     
     @abstractmethod
-    async def count_by_tipificacion(
+    async def find_by_tipificacion(
         self,
         tipificacion: TipificacionHomologada,
         fecha_inicio: Optional[datetime] = None,
         fecha_fin: Optional[datetime] = None
-    ) -> int:
-        """Count activities by result tipification.
+    ) -> List[Gestion]:
+        """Find management actions by tipification.
+        
+        Returns actions with specific homologated tipification.
+        Used for outcome analysis and process improvement.
         
         Args:
-            tipificacion: Result tipification to count
-            fecha_inicio: Optional start datetime filter
-            fecha_fin: Optional end datetime filter
+            tipificacion: Homologated tipification to filter by
+            fecha_inicio: Optional start date filter
+            fecha_fin: Optional end date filter
             
         Returns:
-            Number of gestiones with specified tipification
+            List of actions with specified tipification
             
         Examples:
-            >>> # Payment promises this month
-            >>> month_start = datetime(2025, 6, 1)
-            >>> promises = await repo.count_by_tipificacion(
+            >>> # All payment commitments this week
+            >>> compromisos = await repo.find_by_tipificacion(
             ...     TipificacionHomologada.COMPROMISO_PAGO,
-            ...     fecha_inicio=month_start
+            ...     datetime.now() - timedelta(days=7)
             ... )
         """
         pass
     
     @abstractmethod
-    async def get_ejecutivo_productivity(
+    async def get_estadisticas_productividad(
         self,
-        ejecutivo: str,
-        fecha: date
+        ejecutivo: Optional[str] = None,
+        fecha_inicio: Optional[datetime] = None,
+        fecha_fin: Optional[datetime] = None
     ) -> Dict[str, Any]:
-        """Get comprehensive productivity metrics for agent.
+        """Get productivity statistics.
+        
+        Returns comprehensive productivity metrics for
+        dashboard and performance analysis.
         
         Args:
-            ejecutivo: Agent name
-            fecha: Date for metrics calculation
+            ejecutivo: Optional agent filter
+            fecha_inicio: Optional start date
+            fecha_fin: Optional end date
             
         Returns:
-            Dictionary with productivity metrics
+            Dictionary with productivity stats:
+            - total_gestiones: Total management actions
+            - gestiones_exitosas: Successful actions count
+            - tasa_exito: Success rate percentage
+            - contactos_efectivos: Effective contacts count
+            - tasa_contactabilidad: Contact rate percentage
+            - distribucion_canales: Actions by channel
+            - distribucion_tipificaciones: Actions by tipification
+            - promedio_gestiones_diarias: Daily average
             
         Examples:
-            >>> metrics = await repo.get_ejecutivo_productivity(
-            ...     "Ana García",
-            ...     date.today()
+            >>> # Overall team performance this month
+            >>> stats = await repo.get_estadisticas_productividad(
+            ...     fecha_inicio=datetime.now().replace(day=1)
             ... )
-            >>> # Returns: {
-            >>> #     "total_gestiones": 45,
-            >>> #     "contactos_efectivos": 32,
-            >>> #     "compromisos": 18,
-            >>> #     "tasa_contactabilidad": 71.1,
-            >>> #     "tasa_conversion": 40.0,
-            >>> #     "canales_usados": ["CALL", "WHATSAPP"]
-            >>> # }
+            >>> print(f"Success rate: {stats['tasa_exito']:.1f}%")
+            >>> 
+            >>> # Individual agent performance
+            >>> ana_stats = await repo.get_estadisticas_productividad(
+            ...     ejecutivo="Ana García",
+            ...     fecha_inicio=datetime.now() - timedelta(days=30)
+            ... )
         """
         pass
     
     @abstractmethod
-    async def find_by_tipificacion_homologada(
+    async def find_compromisos_vencidos(
         self,
-        tipificacion: TipificacionHomologada,
-        fecha_inicio: datetime,
+        fecha_corte: Optional[datetime] = None
+    ) -> List[Gestion]:
+        """Find overdue payment commitments.
+        
+        Returns management actions where customer committed
+        to payment but the commitment date has passed.
+        
+        Args:
+            fecha_corte: Cut-off date (default: now)
+            
+        Returns:
+            List of overdue commitments requiring follow-up
+            
+        Business Rules:
+            - Must have es_compromiso = True
+            - fecha_compromiso < fecha_corte
+            - No subsequent payment recorded
+            
+        Examples:
+            >>> # All overdue commitments
+            >>> vencidos = await repo.find_compromisos_vencidos()
+            >>> 
+            >>> # Commitments overdue as of yesterday
+            >>> ayer = datetime.now() - timedelta(days=1)
+            >>> vencidos_ayer = await repo.find_compromisos_vencidos(ayer)
+        """
+        pass
+    
+    @abstractmethod
+    async def find_by_multiple_criteria(
+        self,
+        ejecutivo: Optional[str] = None,
+        canal: Optional[CanalContacto] = None,
+        es_contacto: Optional[bool] = None,
+        es_compromiso: Optional[bool] = None,
+        fecha_inicio: Optional[datetime] = None,
         fecha_fin: Optional[datetime] = None,
         limit: Optional[int] = None
     ) -> List[Gestion]:
-        """Find activities by standardized tipification.
+        """Find management actions by multiple criteria.
+        
+        Flexible query method supporting multiple filters
+        for complex dashboard requirements and analysis.
         
         Args:
-            tipificacion: Standardized tipification
-            fecha_inicio: Start datetime
-            fecha_fin: End datetime (if None, uses current time)
-            limit: Maximum number of gestiones to return
+            ejecutivo: Agent name filter
+            canal: Communication channel filter
+            es_contacto: Contact made filter
+            es_compromiso: Commitment obtained filter
+            fecha_inicio: Start date filter
+            fecha_fin: End date filter
+            limit: Maximum results
             
         Returns:
-            List of gestiones with specified tipification
+            List of filtered management actions
             
         Examples:
-            >>> # All payment promises from last week
-            >>> week_ago = datetime.now() - timedelta(days=7)
-            >>> promises = await repo.find_by_tipificacion_homologada(
-            ...     TipificacionHomologada.COMPROMISO_PAGO,
-            ...     week_ago
+            >>> # Ana's successful calls this week
+            >>> ana_calls = await repo.find_by_multiple_criteria(
+            ...     ejecutivo="Ana García",
+            ...     canal=CanalContacto.CALL,
+            ...     es_contacto=True,
+            ...     fecha_inicio=datetime.now() - timedelta(days=7)
             ... )
         """
         pass
     
     @abstractmethod
-    async def get_daily_summary(
-        self,
-        fecha: date,
-        ejecutivo: Optional[str] = None
-    ) -> Dict[str, Any]:
-        """Get daily activity summary.
+    async def get_metricas_tiempo_real(self) -> Dict[str, Any]:
+        """Get real-time metrics for live dashboard.
         
-        Args:
-            fecha: Date for summary
-            ejecutivo: Optional agent filter
-            
+        Returns current day metrics that update in real-time
+        for operational dashboards and monitoring.
+        
         Returns:
-            Dictionary with daily metrics
+            Dictionary with real-time metrics:
+            - gestiones_hoy: Today's total actions
+            - contactos_hoy: Today's effective contacts
+            - compromisos_hoy: Today's commitments obtained
+            - ejecutivos_activos: Number of active agents
+            - ultima_actualizacion: Last update timestamp
             
         Examples:
-            >>> # Overall daily summary
-            >>> summary = await repo.get_daily_summary(date.today())
-            >>> 
-            >>> # Agent-specific summary
-            >>> ana_summary = await repo.get_daily_summary(
-            ...     date.today(),
-            ...     ejecutivo="Ana García"
-            ... )
-        """
-        pass
-    
-    @abstractmethod
-    async def find_requiring_followup(
-        self,
-        fecha_limite: datetime,
-        ejecutivo: Optional[str] = None
-    ) -> List[Gestion]:
-        """Find activities requiring follow-up action.
-        
-        Args:
-            fecha_limite: Maximum date for follow-up
-            ejecutivo: Optional agent filter
-            
-        Returns:
-            List of gestiones needing follow-up
-            
-        Examples:
-            >>> # Activities needing follow-up by end of week
-            >>> friday = datetime(2025, 6, 6, 23, 59, 59)
-            >>> followups = await repo.find_requiring_followup(friday)
-        """
-        pass
-    
-    @abstractmethod
-    async def get_channel_performance(
-        self,
-        fecha_inicio: datetime,
-        fecha_fin: Optional[datetime] = None
-    ) -> Dict[str, Dict[str, Any]]:
-        """Get performance metrics by communication channel.
-        
-        Args:
-            fecha_inicio: Start datetime
-            fecha_fin: End datetime (if None, uses current time)
-            
-        Returns:
-            Dictionary with channel performance metrics
-            
-        Examples:
-            >>> performance = await repo.get_channel_performance(
-            ...     datetime(2025, 6, 1)
-            ... )
-            >>> # Returns: {
-            >>> #     "CALL": {
-            >>> #         "total_gestiones": 1500,
-            >>> #         "contactos_efectivos": 1050,
-            >>> #         "compromisos": 420,
-            >>> #         "tasa_contactabilidad": 70.0,
-            >>> #         "tasa_conversion": 28.0
-            >>> #     },
-            >>> #     "WHATSAPP": {...}
-            >>> # }
-        """
-        pass
-    
-    @abstractmethod
-    async def find_batch_by_cliente_list(
-        self,
-        documentos_clientes: List[str],
-        fecha_inicio: Optional[datetime] = None,
-        limit_per_cliente: Optional[int] = None
-    ) -> Dict[str, List[Gestion]]:
-        """Find activities for multiple clients efficiently.
-        
-        Args:
-            documentos_clientes: List of client document numbers
-            fecha_inicio: Optional start datetime filter
-            limit_per_cliente: Maximum gestiones per client
-            
-        Returns:
-            Dictionary mapping documento to list of gestiones
-            
-        Examples:
-            >>> docs = ["12345678", "87654321"]
-            >>> gestiones_map = await repo.find_batch_by_cliente_list(docs)
-            >>> # Returns: {
-            >>> #     "12345678": [gestion1, gestion2, ...],
-            >>> #     "87654321": [gestion3, gestion4, ...]
-            >>> # }
+            >>> # Live dashboard update
+            >>> metricas = await repo.get_metricas_tiempo_real()
+            >>> print(f"Today: {metricas['gestiones_hoy']} actions, "
+            ...       f"{metricas['compromisos_hoy']} commitments")
         """
         pass

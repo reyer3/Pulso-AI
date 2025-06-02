@@ -1,42 +1,54 @@
 """Cliente repository interface.
 
-Defines the contract for Cliente entity persistence operations,
-focused on debt collection and customer management use cases.
+Defines contracts for Cliente entity persistence and queries.
+Focused on business needs for debt collection and customer management.
 """
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, date
 
-from .base_repository import BaseRepository
 from ...entities.cliente import Cliente
 from ...value_objects.enums import PrioridadCobranza
+from .base_repository import BaseRepository
 
 
-class ClienteRepository(BaseRepository[Cliente]):
-    """Repository interface for Cliente entity operations.
+class ClienteRepository(BaseRepository[Cliente, str], ABC):
+    """Repository interface for Cliente entity persistence.
     
-    This interface defines all data access operations needed for
-    cliente management in the debt collection domain. The methods
-    are designed to support common business use cases.
+    This interface defines all data access operations needed
+    for customer management in the debt collection system.
+    Each method reflects real business requirements.
+    
+    Key Features:
+        - Business-focused query methods
+        - Async operations for performance
+        - Type-safe with full annotations
+        - Client-agnostic (works with any data source)
     
     Examples:
-        >>> # Find clients with high debt and overdue status
-        >>> clientes_criticos = await repo.find_clientes_en_mora(
-        ...     dias_minimos=90,
-        ...     saldo_minimo=5000.0
+        >>> # Usage in application layer
+        >>> clientes_mora = await cliente_repo.find_clientes_en_mora(30)
+        >>> clientes_alta_prioridad = await cliente_repo.find_by_prioridad(
+        ...     PrioridadCobranza.ALTA
         ... )
-        >>> 
-        >>> # Get client by business key (documento)
-        >>> cliente = await repo.find_by_documento("12345678")
+        
+        >>> # Multi-client usage (same interface, different adapters)
+        >>> # Movistar (BigQuery)
+        >>> movistar_clientes = await bigquery_repo.find_by_saldo_range(1000, 5000)
+        >>> # Claro (PostgreSQL) 
+        >>> claro_clientes = await postgres_repo.find_by_saldo_range(1000, 5000)
     """
     
     @abstractmethod
     async def find_by_documento(self, documento: str) -> Optional[Cliente]:
-        """Find cliente by identity document (business key).
+        """Find cliente by identity document.
+        
+        Primary method for customer lookup. Document number
+        is the business key for customer identification.
         
         Args:
-            documento: Client's identity document number
+            documento: Customer identity document number
             
         Returns:
             Cliente if found, None otherwise
@@ -44,229 +56,265 @@ class ClienteRepository(BaseRepository[Cliente]):
         Examples:
             >>> cliente = await repo.find_by_documento("12345678")
             >>> if cliente:
-            ...     print(f"Found: {cliente.nombre}")
+            ...     print(f"Found: {cliente.nombre}, debt: ${cliente.saldo_actual}")
         """
         pass
     
     @abstractmethod
     async def find_clientes_en_mora(
-        self,
+        self, 
         dias_minimos: int = 30,
-        saldo_minimo: Optional[float] = None,
         limit: Optional[int] = None
     ) -> List[Cliente]:
-        """Find clients with overdue debt.
+        """Find customers with overdue debt.
+        
+        Critical query for collection operations. Returns customers
+        whose debt is overdue beyond the specified threshold.
         
         Args:
-            dias_minimos: Minimum days overdue (default: 30)
-            saldo_minimo: Minimum debt amount to include
-            limit: Maximum number of clients to return
+            dias_minimos: Minimum days overdue to include
+            limit: Maximum number of results
             
         Returns:
-            List of clients matching criteria
+            List of overdue customers
+            
+        Business Rules:
+            - Default 30 days for standard mora definition
+            - Results ordered by days_mora DESC (most urgent first)
+            - Excludes customers with estado = EXCLUIDO or PAGADO
             
         Examples:
-            >>> # Critical clients: >90 days, >$5000 debt
-            >>> criticos = await repo.find_clientes_en_mora(
-            ...     dias_minimos=90,
-            ...     saldo_minimo=5000.0
-            ... )
+            >>> # Standard overdue customers
+            >>> mora_30 = await repo.find_clientes_en_mora(30)
+            >>> 
+            >>> # Critical cases (90+ days)
+            >>> criticos = await repo.find_clientes_en_mora(90, limit=100)
         """
         pass
-    
+        
     @abstractmethod
     async def find_by_saldo_range(
-        self,
-        saldo_min: float,
-        saldo_max: float,
-        include_zero: bool = False
+        self, 
+        saldo_min: float, 
+        saldo_max: float
     ) -> List[Cliente]:
-        """Find clients within specific debt amount range.
+        """Find customers within debt amount range.
+        
+        Used for segmentation and prioritization strategies.
+        Helps identify high-value vs small-debt customers.
         
         Args:
             saldo_min: Minimum debt amount (inclusive)
             saldo_max: Maximum debt amount (inclusive)
-            include_zero: Whether to include clients with zero debt
             
         Returns:
-            List of clients with debt in specified range
+            List of customers in debt range
             
         Examples:
-            >>> # Medium debt clients: $1000-$5000
-            >>> medios = await repo.find_by_saldo_range(1000.0, 5000.0)
+            >>> # High-value customers
+            >>> high_debt = await repo.find_by_saldo_range(5000.0, 50000.0)
+            >>> 
+            >>> # Small debt customers
+            >>> small_debt = await repo.find_by_saldo_range(100.0, 1000.0)
+        """
+        pass
+        
+    @abstractmethod
+    async def count_clientes_activos(self) -> int:
+        """Count customers with active debt.
+        
+        Returns total number of customers currently in
+        the collection process (excluding paid/excluded).
+        
+        Returns:
+            Number of active customers
+            
+        Business Rules:
+            - Includes only customers with saldo_actual > 0
+            - Excludes PAGADO, CASTIGADO, EXCLUIDO statuses
+            
+        Examples:
+            >>> total_activos = await repo.count_clientes_activos()
+            >>> print(f"Managing {total_activos} active customers")
         """
         pass
     
     @abstractmethod
     async def find_by_prioridad(
-        self,
+        self, 
         prioridad: PrioridadCobranza,
         limit: Optional[int] = None
     ) -> List[Cliente]:
-        """Find clients by collection priority level.
+        """Find customers by collection priority.
+        
+        Returns customers matching specified priority level.
+        Used for daily work assignment and resource allocation.
         
         Args:
-            prioridad: Priority level to filter by
-            limit: Maximum number of clients to return
+            prioridad: Collection priority level
+            limit: Maximum number of results
             
         Returns:
-            List of clients with specified priority
-            
-        Note:
-            Priority is calculated using cliente.calcular_prioridad_cobranza()
-        """
-        pass
-    
-    @abstractmethod
-    async def find_contactables(self, only_with_phone: bool = False) -> List[Cliente]:
-        """Find clients with available contact information.
-        
-        Args:
-            only_with_phone: If True, only include clients with phone numbers
-            
-        Returns:
-            List of contactable clients
+            List of customers with specified priority
             
         Examples:
-            >>> # All contactable clients (phone or email)
-            >>> contactables = await repo.find_contactables()
-            >>> 
-            >>> # Only clients with phone numbers
-            >>> con_telefono = await repo.find_contactables(only_with_phone=True)
-        """
-        pass
-    
-    @abstractmethod
-    async def count_clientes_activos(self) -> int:
-        """Count total active clients (with current debt).
-        
-        Returns:
-            Number of clients with saldo_actual > 0
-            
-        Examples:
-            >>> total = await repo.count_clientes_activos()
-            >>> print(f"Active clients: {total}")
-        """
-        pass
-    
-    @abstractmethod
-    async def count_by_mora_ranges(self) -> Dict[str, int]:
-        """Count clients grouped by overdue day ranges.
-        
-        Returns:
-            Dictionary with ranges as keys and counts as values
-            
-        Examples:
-            >>> ranges = await repo.count_by_mora_ranges()
-            >>> # Returns: {
-            >>> #     "0-30": 1500,
-            >>> #     "31-60": 800, 
-            >>> #     "61-90": 400,
-            >>> #     "90+": 200
-            >>> # }
-        """
-        pass
-    
-    @abstractmethod
-    async def find_top_debtors(
-        self,
-        limit: int = 100,
-        min_amount: Optional[float] = None
-    ) -> List[Cliente]:
-        """Find clients with highest debt amounts.
-        
-        Args:
-            limit: Maximum number of clients to return
-            min_amount: Minimum debt amount to consider
-            
-        Returns:
-            List of clients ordered by debt amount (descending)
-            
-        Examples:
-            >>> # Top 50 debtors with at least $10,000 debt
-            >>> top_debtors = await repo.find_top_debtors(
-            ...     limit=50,
-            ...     min_amount=10000.0
+            >>> # Today's high priority work
+            >>> alta_prioridad = await repo.find_by_prioridad(
+            ...     PrioridadCobranza.ALTA, limit=50
             ... )
         """
         pass
     
     @abstractmethod
-    async def find_recently_updated(
+    async def find_contactables(
         self,
-        hours: int = 24,
-        limit: Optional[int] = None
+        incluir_solo_telefono: bool = False
     ) -> List[Cliente]:
-        """Find clients updated within specified time frame.
+        """Find customers with valid contact information.
+        
+        Returns customers who can be contacted via phone or email.
+        Critical for planning outbound campaigns.
         
         Args:
-            hours: Number of hours to look back
-            limit: Maximum number of clients to return
+            incluir_solo_telefono: If True, require phone number
             
         Returns:
-            List of recently updated clients
+            List of contactable customers
+            
+        Business Rules:
+            - Must have phone OR email (unless incluir_solo_telefono=True)
+            - Contact info must be non-empty and properly formatted
+            - Excludes customers who requested no contact
             
         Examples:
-            >>> # Clients updated in last 6 hours
-            >>> recent = await repo.find_recently_updated(hours=6)
+            >>> # All contactable customers
+            >>> contactables = await repo.find_contactables()
+            >>> 
+            >>> # Only customers with phone for call campaigns
+            >>> telefono_disponible = await repo.find_contactables(
+            ...     incluir_solo_telefono=True
+            ... )
         """
         pass
     
     @abstractmethod
-    async def search_by_name(
+    async def find_by_rango_dias_mora(
         self,
-        name_pattern: str,
-        limit: Optional[int] = None
+        dias_min: int,
+        dias_max: int
     ) -> List[Cliente]:
-        """Search clients by name pattern.
+        """Find customers within specific overdue days range.
+        
+        Used for creating targeted collection strategies
+        based on debt age segmentation.
         
         Args:
-            name_pattern: Name pattern to search (supports wildcards)
-            limit: Maximum number of clients to return
+            dias_min: Minimum days overdue (inclusive)
+            dias_max: Maximum days overdue (inclusive)
             
         Returns:
-            List of clients matching name pattern
+            List of customers in overdue range
             
         Examples:
-            >>> # Find all clients named "Juan"
-            >>> juanes = await repo.search_by_name("Juan%")
+            >>> # Recent overdue (early intervention)
+            >>> recientes = await repo.find_by_rango_dias_mora(1, 30)
+            >>> 
+            >>> # Medium term overdue
+            >>> mediano_plazo = await repo.find_by_rango_dias_mora(31, 90)
+            >>> 
+            >>> # Long term overdue (pre-legal)
+            >>> largo_plazo = await repo.find_by_rango_dias_mora(91, 180)
         """
         pass
     
     @abstractmethod
-    async def get_portfolio_summary(self) -> Dict[str, Any]:
-        """Get overall portfolio summary statistics.
+    async def find_top_deudores(
+        self,
+        limite: int = 100
+    ) -> List[Cliente]:
+        """Find customers with highest debt amounts.
         
+        Returns top debtors ordered by saldo_actual DESC.
+        Used for prioritizing high-value collection efforts.
+        
+        Args:
+            limite: Maximum number of top debtors to return
+            
         Returns:
-            Dictionary with portfolio metrics
+            List of top debtors
             
         Examples:
-            >>> summary = await repo.get_portfolio_summary()
-            >>> # Returns: {
-            >>> #     "total_clients": 10000,
-            >>> #     "total_debt": 50000000.0,
-            >>> #     "avg_debt": 5000.0,
-            >>> #     "clients_in_mora": 3500,
-            >>> #     "contactable_clients": 8500
-            >>> # }
+            >>> # Top 50 debtors for management attention
+            >>> top_deudores = await repo.find_top_deudores(50)
+            >>> total_debt = sum(c.saldo_actual for c in top_deudores)
         """
         pass
     
     @abstractmethod
-    async def find_batch_by_documentos(
+    async def find_sin_gestion_reciente(
         self,
-        documentos: List[str]
+        dias_sin_gestion: int = 30
     ) -> List[Cliente]:
-        """Find multiple clients by their documents in single query.
+        """Find customers without recent management actions.
+        
+        Returns customers who haven't been contacted recently.
+        Important for ensuring comprehensive coverage.
         
         Args:
-            documentos: List of document numbers to find
+            dias_sin_gestion: Days since last management action
             
         Returns:
-            List of found clients (may be fewer than requested)
+            List of customers without recent contact
             
         Examples:
-            >>> docs = ["12345678", "87654321", "11111111"]
-            >>> clientes = await repo.find_batch_by_documentos(docs)
+            >>> # Customers not contacted in 30 days
+            >>> sin_atencion = await repo.find_sin_gestion_reciente(30)
+        """
+        pass
+    
+    @abstractmethod
+    async def update_ultimo_contacto(
+        self,
+        documento: str,
+        fecha_contacto: datetime
+    ) -> bool:
+        """Update customer's last contact date.
+        
+        Updates the last contact timestamp for tracking
+        recency of collection activities.
+        
+        Args:
+            documento: Customer document number
+            fecha_contacto: Date/time of last contact
+            
+        Returns:
+            True if update successful
+            
+        Examples:
+            >>> # Update after successful contact
+            >>> await repo.update_ultimo_contacto(
+            ...     "12345678", datetime.now()
+            ... )
+        """
+        pass
+    
+    @abstractmethod
+    async def get_estadisticas_mora(self) -> Dict[str, Any]:
+        """Get overdue debt statistics.
+        
+        Returns comprehensive statistics about overdue customers
+        for dashboard and reporting purposes.
+        
+        Returns:
+            Dictionary with statistics:
+            - total_clientes: Total active customers
+            - clientes_en_mora: Customers with overdue debt
+            - promedio_dias_mora: Average days overdue
+            - total_saldo_mora: Total overdue debt amount
+            - distribucion_mora: Distribution by mora ranges
+            
+        Examples:
+            >>> stats = await repo.get_estadisticas_mora()
+            >>> print(f"Overdue rate: {stats['clientes_en_mora'] / stats['total_clientes']:.1%}")
         """
         pass
