@@ -6,53 +6,51 @@ SET timezone = 'UTC';
 SET client_encoding = 'UTF8';
 
 -- =====================================
--- 🔐 CREAR ROLES Y USUARIOS
+-- 🔐 CREAR ROLES Y USUARIOS ADICIONALES
 -- =====================================
 
--- Usuario para aplicación (ya creado por variables de entorno)
--- POSTGRES_USER=pulso_ai, POSTGRES_PASSWORD=dev_password_2024
+-- El usuario principal ya está creado por variables de entorno:
+-- POSTGRES_USER=pulso_user, POSTGRES_PASSWORD=pulso_dev_password, POSTGRES_DB=pulso_dev
 
 -- Usuario de solo lectura para análisis
-CREATE USER pulso_ai_readonly WITH PASSWORD 'readonly_dev_2024';
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'pulso_user_readonly') THEN
+        CREATE USER pulso_user_readonly WITH PASSWORD 'readonly_dev_2024';
+    END IF;
+END $$;
 
 -- Usuario para testing
-CREATE USER pulso_ai_test WITH PASSWORD 'test_password_2024';
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'pulso_user_test') THEN
+        CREATE USER pulso_user_test WITH PASSWORD 'test_password_2024';
+    END IF;
+END $$;
 
 -- =====================================
--- 🏗️ CREAR DATABASES
+-- 🏗️ CREAR DATABASES ADICIONALES
 -- =====================================
 
--- Database principal (ya creada por POSTGRES_DB=pulso_ai_dev)
+-- Database principal ya creada por POSTGRES_DB=pulso_dev
 
 -- Database para testing
-CREATE DATABASE pulso_ai_test 
-    WITH OWNER = pulso_ai_test
-    ENCODING = 'UTF8'
-    LC_COLLATE = 'en_US.UTF-8'
-    LC_CTYPE = 'en_US.UTF-8'
-    TEMPLATE = template0;
+SELECT 'CREATE DATABASE pulso_test WITH OWNER = pulso_user_test ENCODING = ''UTF8'' LC_COLLATE = ''en_US.UTF-8'' LC_CTYPE = ''en_US.UTF-8'' TEMPLATE = template0'
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'pulso_test')\gexec
 
 -- Database para cada cliente (multi-tenant preparation)
-CREATE DATABASE pulso_ai_movistar_dev 
-    WITH OWNER = pulso_ai
-    ENCODING = 'UTF8'
-    LC_COLLATE = 'en_US.UTF-8'
-    LC_CTYPE = 'en_US.UTF-8'
-    TEMPLATE = template0;
+SELECT 'CREATE DATABASE pulso_movistar_dev WITH OWNER = pulso_user ENCODING = ''UTF8'' LC_COLLATE = ''en_US.UTF-8'' LC_CTYPE = ''en_US.UTF-8'' TEMPLATE = template0'
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'pulso_movistar_dev')\gexec
 
-CREATE DATABASE pulso_ai_claro_dev 
-    WITH OWNER = pulso_ai
-    ENCODING = 'UTF8'
-    LC_COLLATE = 'en_US.UTF-8'
-    LC_CTYPE = 'en_US.UTF-8'
-    TEMPLATE = template0;
+SELECT 'CREATE DATABASE pulso_claro_dev WITH OWNER = pulso_user ENCODING = ''UTF8'' LC_COLLATE = ''en_US.UTF-8'' LC_CTYPE = ''en_US.UTF-8'' TEMPLATE = template0'
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'pulso_claro_dev')\gexec
 
 -- =====================================
 -- 🔑 CONFIGURAR PERMISOS
 -- =====================================
 
 -- Conectar a database principal
-\c pulso_ai_dev;
+\c pulso_dev;
 
 -- Crear schemas para organización
 CREATE SCHEMA IF NOT EXISTS core;
@@ -60,39 +58,39 @@ CREATE SCHEMA IF NOT EXISTS clients;
 CREATE SCHEMA IF NOT EXISTS analytics;
 CREATE SCHEMA IF NOT EXISTS audit;
 
--- Permisos para usuario principal
-GRANT ALL PRIVILEGES ON DATABASE pulso_ai_dev TO pulso_ai;
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO pulso_ai;
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA core TO pulso_ai;
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA clients TO pulso_ai;
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA analytics TO pulso_ai;
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA audit TO pulso_ai;
+-- Permisos para usuario principal (pulso_user ya es owner)
+GRANT ALL PRIVILEGES ON DATABASE pulso_dev TO pulso_user;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO pulso_user;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA core TO pulso_user;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA clients TO pulso_user;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA analytics TO pulso_user;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA audit TO pulso_user;
 
 -- Permisos para usuario de solo lectura
-GRANT CONNECT ON DATABASE pulso_ai_dev TO pulso_ai_readonly;
-GRANT USAGE ON SCHEMA public, core, clients, analytics TO pulso_ai_readonly;
-GRANT SELECT ON ALL TABLES IN SCHEMA public TO pulso_ai_readonly;
-GRANT SELECT ON ALL TABLES IN SCHEMA core TO pulso_ai_readonly;
-GRANT SELECT ON ALL TABLES IN SCHEMA clients TO pulso_ai_readonly;
-GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO pulso_ai_readonly;
+GRANT CONNECT ON DATABASE pulso_dev TO pulso_user_readonly;
+GRANT USAGE ON SCHEMA public, core, clients, analytics TO pulso_user_readonly;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO pulso_user_readonly;
+GRANT SELECT ON ALL TABLES IN SCHEMA core TO pulso_user_readonly;
+GRANT SELECT ON ALL TABLES IN SCHEMA clients TO pulso_user_readonly;
+GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO pulso_user_readonly;
 
 -- Permisos por defecto para tablas futuras
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO pulso_ai;
-ALTER DEFAULT PRIVILEGES IN SCHEMA core GRANT ALL ON TABLES TO pulso_ai;
-ALTER DEFAULT PRIVILEGES IN SCHEMA clients GRANT ALL ON TABLES TO pulso_ai;
-ALTER DEFAULT PRIVILEGES IN SCHEMA analytics GRANT ALL ON TABLES TO pulso_ai;
-ALTER DEFAULT PRIVILEGES IN SCHEMA audit GRANT ALL ON TABLES TO pulso_ai;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO pulso_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA core GRANT ALL ON TABLES TO pulso_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA clients GRANT ALL ON TABLES TO pulso_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA analytics GRANT ALL ON TABLES TO pulso_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA audit GRANT ALL ON TABLES TO pulso_user;
 
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO pulso_ai_readonly;
-ALTER DEFAULT PRIVILEGES IN SCHEMA core GRANT SELECT ON TABLES TO pulso_ai_readonly;
-ALTER DEFAULT PRIVILEGES IN SCHEMA clients GRANT SELECT ON TABLES TO pulso_ai_readonly;
-ALTER DEFAULT PRIVILEGES IN SCHEMA analytics GRANT SELECT ON TABLES TO pulso_ai_readonly;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO pulso_user_readonly;
+ALTER DEFAULT PRIVILEGES IN SCHEMA core GRANT SELECT ON TABLES TO pulso_user_readonly;
+ALTER DEFAULT PRIVILEGES IN SCHEMA clients GRANT SELECT ON TABLES TO pulso_user_readonly;
+ALTER DEFAULT PRIVILEGES IN SCHEMA analytics GRANT SELECT ON TABLES TO pulso_user_readonly;
 
 -- =====================================
 -- 🔧 EXTENSIONES ÚTILES
 -- =====================================
 
--- UUID generation
+-- UUID generation (corregido con comillas)
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Cryptographic functions
@@ -100,9 +98,6 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- Full text search
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
-
--- JSON functions (PostgreSQL 14+)
--- Ya incluido por defecto en PostgreSQL 15
 
 -- Time functions
 CREATE EXTENSION IF NOT EXISTS btree_gist;
@@ -185,9 +180,11 @@ END;
 $$ language 'plpgsql';
 
 -- Triggers para updated_at
+DROP TRIGGER IF EXISTS update_settings_updated_at ON core.settings;
 CREATE TRIGGER update_settings_updated_at BEFORE UPDATE ON core.settings 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_client_configs_updated_at ON clients.client_configs;
 CREATE TRIGGER update_client_configs_updated_at BEFORE UPDATE ON clients.client_configs 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
@@ -212,21 +209,6 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- =====================================
--- 📈 OPTIMIZACIONES DE DESARROLLO
--- =====================================
-
--- Configuraciones para desarrollo rápido
-ALTER SYSTEM SET shared_preload_libraries = 'pg_stat_statements';
-ALTER SYSTEM SET log_statement = 'all';
-ALTER SYSTEM SET log_duration = on;
-ALTER SYSTEM SET log_min_duration_statement = 1000; -- Log queries > 1s
-
--- Configuración de memoria para desarrollo
-ALTER SYSTEM SET shared_buffers = '256MB';
-ALTER SYSTEM SET work_mem = '16MB';
-ALTER SYSTEM SET maintenance_work_mem = '128MB';
-
--- =====================================
 -- ✅ VERIFICACIÓN FINAL
 -- =====================================
 
@@ -234,9 +216,9 @@ ALTER SYSTEM SET maintenance_work_mem = '128MB';
 DO $$
 BEGIN
     RAISE NOTICE '🎉 PostgreSQL development database initialized successfully!';
-    RAISE NOTICE '📊 Databases created: pulso_ai_dev, pulso_ai_test, pulso_ai_movistar_dev, pulso_ai_claro_dev';
-    RAISE NOTICE '👥 Users created: pulso_ai, pulso_ai_readonly, pulso_ai_test';
-    RAISE NOTICE '🏗️ Schemas created: core, clients, analytics, audit';
-    RAISE NOTICE '🔧 Extensions enabled: uuid-ossp, pgcrypto, pg_trgm, btree_gist';
+    RAISE NOTICE '📊 Databases: pulso_dev (main), pulso_test, pulso_movistar_dev, pulso_claro_dev';
+    RAISE NOTICE '👥 Users: pulso_user (main), pulso_user_readonly, pulso_user_test';
+    RAISE NOTICE '🏗️ Schemas: core, clients, analytics, audit';
+    RAISE NOTICE '🔧 Extensions: uuid-ossp, pgcrypto, pg_trgm, btree_gist';
     RAISE NOTICE '🚀 Ready for Pulso-AI development!';
 END $$;
