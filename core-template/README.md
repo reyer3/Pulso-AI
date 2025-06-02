@@ -8,6 +8,34 @@
 -   **Mantenibilidad:** Promover una arquitectura limpia que aísle la lógica de negocio de la infraestructura y los mecanismos de entrega.
 -   **Testabilidad:** Facilitar las pruebas unitarias, de integración y de extremo a extremo (end-to-end) definiendo claramente los límites entre componentes.
 
+## 🚀 Quick Start
+
+### Instalación de Dependencias (Simplificado)
+```bash
+# Para desarrollo (recomendado)
+pip install -e .[dev]
+
+# Para producción  
+pip install -e .[prod]
+
+# Solo dependencias base
+pip install -e .
+```
+
+> **Nota:** Este proyecto usa **solo pyproject.toml** para manejar dependencias. Los archivos en `requirements/` están marcados como deprecated. Ver [requirements/README.md](requirements/README.md) para la guía de migración.
+
+### Verificar Instalación
+```bash
+# Verificar que no hay conflictos
+pip check
+
+# Ejecutar tests
+pytest
+
+# Verificar imports básicos
+python -c "import fastapi, pydantic, strawberry; print('✅ Core dependencies OK')"
+```
+
 ## 🏛️ Implementación de la Arquitectura Hexagonal
 
 El `core-template` materializa la Arquitectura Hexagonal, que estructura la aplicación en capas distintas:
@@ -36,19 +64,25 @@ La plantilla está organizada de la siguiente manera:
 ```
 core-template/
 ├── src/                    # Código fuente del servicio
-│   ├── domain/             # 💼 Lógica de Negocio: Entidades, Objetos de Valor, Servicios de Dominio, Interfaces de Repositorio (Puertos). Python puro, sin dependencias de frameworks.
-│   ├── application/        # 🔄 Casos de Uso: Servicios de aplicación que orquestan la lógica de dominio. Implementa los puertos de dominio.
-│   ├── infrastructure/     # 🔌 Adaptadores e Implementaciones: Implementaciones concretas de interfaces de repositorio (ej., interacciones con base de datos), clientes de servicios externos, productores/consumidores de colas de mensajes.
-│   └── api/                # 🌐 Capa de API: Aplicación FastAPI, esquemas GraphQL (Strawberry), modelos de solicitud/respuesta (Pydantic), configuración de inyección de dependencias.
-├── tests/                  # 🧪 Pruebas: Organizadas reflejando la estructura de src/ (unitarias, integración, e2e).
-│   ├── unit/
-│   ├── integration/
-│   └── e2e/
-├── requirements/           # 📦 Dependencias de Python: Separadas en base.txt (núcleo) y dev.txt (herramientas de desarrollo).
-│   ├── base.txt
-│   └── dev.txt
-├── pytest.ini              # Configuración para Pytest.
-└── README.md               # Esta documentación.
+│   ├── domain/             # 💼 Lógica de Negocio
+│   │   ├── entities/       # Entidades de dominio (Cliente, Gestion, Metrica)
+│   │   ├── value_objects/  # Value objects (Enums, Identificadores)
+│   │   ├── ports/          # 🔌 Interfaces/Puertos (NEW: Hexagonal Architecture)
+│   │   │   ├── repositories/    # Contratos para acceso a datos
+│   │   │   ├── services/        # Contratos para lógica de negocio
+│   │   │   └── events/          # Contratos para eventos de dominio
+│   │   └── exceptions/     # Excepciones específicas del dominio
+│   ├── application/        # 🔄 Casos de Uso: Servicios de aplicación que orquestan la lógica de dominio
+│   ├── infrastructure/     # 🔌 Adaptadores e Implementaciones: Implementaciones concretas de puertos
+│   └── api/                # 🌐 Capa de API: FastAPI, GraphQL (Strawberry), Pydantic models
+├── tests/                  # 🧪 Pruebas organizadas por tipo
+│   ├── unit/               # Pruebas unitarias (domain, application)
+│   ├── integration/        # Pruebas de integración (infrastructure)
+│   └── e2e/                # Pruebas end-to-end (API completa)
+├── pyproject.toml          # 📦 Configuración moderna de Python y dependencias
+├── pytest.ini             # Configuración para Pytest
+├── requirements/           # ⚠️  DEPRECATED: Ver requirements/README.md para migración
+└── README.md               # Esta documentación
 ```
 
 ## ✨ Principios Arquitectónicos Clave
@@ -64,23 +98,72 @@ core-template/
 2.  **Renombrar/Refactorizar**: Ajusta los nombres (ej., nombres de módulos, nombres de clases) para reflejar el contexto delimitado del nuevo servicio.
 3.  **Configurar**: Define configuraciones específicas (conexiones de base de datos, claves API) típicamente mediante variables de entorno o archivos de configuración cargados por la capa de infraestructura.
 4.  **Implementar**:
-    *   Define entidades y lógica de dominio en `src/domain/`.
-    *   Crea servicios de aplicación en `src/application/`.
-    *   Construye adaptadores para sistemas externos en `src/infrastructure/`.
-    *   Expón la funcionalidad a través de `src/api/`.
-5.  **Probar**: Escribe pruebas exhaustivas para todas las capas.
+    *   Define entidades y lógica de dominio en `src/domain/`
+    *   Define puertos (interfaces) en `src/domain/ports/` 
+    *   Crea servicios de aplicación en `src/application/`
+    *   Construye adaptadores para sistemas externos en `src/infrastructure/`
+    *   Expón la funcionalidad a través de `src/api/`
+5.  **Probar**: Escribe pruebas exhaustivas para todas las capas usando los mocks de las interfaces.
 
 ## 🛠️ Tecnologías y Patrones
 
 -   **Framework Backend**: Python 3.11+, FastAPI (asíncrono)
 -   **GraphQL**: Strawberry para Python
--   **Manejo de Datos**: Polars (para manipulación de datos de alto rendimiento, si aplica), Pydantic (para validación y serialización)
--   **Patrones Arquitectónicos**: Arquitectura Hexagonal, Patrón Repositorio, Inyección de Dependencias, CQRS (opcional, donde sea apropiado).
--   **Pruebas**: Pytest, `httpx` (para pruebas de API).
+-   **Manejo de Datos**: Polars (para manipulación de datos de alto rendimiento), Pydantic (para validación y serialización)
+-   **Patrones Arquitectónicos**: Arquitectura Hexagonal, Patrón Repositorio, Inyección de Dependencias, CQRS (opcional)
+-   **Pruebas**: Pytest, `httpx` (para pruebas de API)
+
+## 📦 Gestión de Dependencias
+
+Este proyecto usa **pyproject.toml** como sistema único de dependencias siguiendo las mejores prácticas modernas:
+
+### Instalación por Entorno
+```bash
+# Desarrollo (incluye herramientas de testing, linting, etc.)
+pip install -e .[dev]
+
+# Producción (optimizado para deployment)
+pip install -e .[prod]
+
+# Testing (solo dependencias para tests)
+pip install -e .[test]
+
+# Solo dependencias base
+pip install -e .
+```
+
+### Agregar Nuevas Dependencias
+```toml
+# En pyproject.toml
+[project]
+dependencies = [
+    "nueva-dependencia>=1.0.0,<2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "nueva-herramienta-dev>=1.0.0",
+]
+```
+
+### Workflow Recomendado
+```bash
+# Setup inicial
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+pip install -e .[dev]
+
+# Verificar salud de dependencias
+pip check
+
+# Desarrollo diario
+pytest                    # Ejecutar tests
+black .                   # Formatear código
+mypy src/                 # Type checking
+```
 
 ## 📝 Convenciones
 
-(El contenido existente sobre Nomenclatura, Imports y Documentación es bueno y se conserva)
 ### Nomenclatura (Naming)
 - **Clases**: PascalCase (`ClienteService`)
 - **Funciones**: snake_case (`generate_dashboard`)
@@ -113,7 +196,6 @@ def process_client_data(client_id: str) -> DashboardData:
 
 ## 🔄 Ciclo de Desarrollo
 
-(El contenido existente es bueno y se conserva)
 1. **Desarrollo de Características**: En core-template
 2. **Pruebas**: Pruebas unitarias + integración
 3. **Despliegue**: A cliente de pruebas
@@ -122,7 +204,6 @@ def process_client_data(client_id: str) -> DashboardData:
 
 ## 🤝 Directrices de Contribución
 
-(El contenido existente es bueno y se conserva)
 Para contribuir al core:
 
 1. **Rama (Branch)**: `feature/core-feature-name`
@@ -133,4 +214,3 @@ Para contribuir al core:
 ---
 
 *Esta plantilla es el corazón de los servicios backend de Pulso-AI: una base sólida para construir aplicaciones escalables, mantenibles y testeables.*
-```
