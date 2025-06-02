@@ -253,21 +253,21 @@ jobs:
           cp .env.example .env
           
           # Start services
-          docker-compose up -d postgres redis
+          docker compose up -d postgres redis
           
           # Wait for services to be ready
           sleep 30
           
           # Test database connection
-          docker-compose exec -T postgres psql -U pulso_ai -d pulso_ai_dev -c "SELECT version();"
+          docker compose exec -T postgres psql -U pulso_ai -d pulso_ai_dev -c "SELECT version();"
           
           # Test Redis connection
-          docker-compose exec -T redis redis-cli ping
+          docker compose exec -T redis redis-cli ping
 
       - name: 🧹 Cleanup
         if: always()
         run: |
-          docker-compose down -v
+          docker compose down -v
 
       - name: 📊 Upload build artifacts
         uses: actions/upload-artifact@v4
