@@ -41,7 +41,8 @@ cryptography==45.0.3
 # =====================================
 # ⚙️ CONFIGURATION & ENVIRONMENT
 # =====================================
-pydantic==2.5.2
+# FIXED: Updated from pydantic==2.5.2 to satisfy safety>=2.6.0 requirement
+pydantic>=2.6.0,<2.10.0
 pydantic-settings==2.1.0
 python-dotenv==1.0.0
 pyyaml==6.0.1
