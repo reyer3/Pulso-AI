@@ -1,0 +1,416 @@
+# 📊 Dashboard Template - Telefónica del Perú
+# Configuración específica del dashboard de cobranza
+
+# 🎯 CONFIGURACIÓN GENERAL
+dashboard:
+  id: "telefonica-peru-cobranza"
+  title: "Dashboard de Cobranza - Telefónica del Perú"
+  description: "Análisis de productividad y contactabilidad de ejecutivos"
+  layout_type: "executive_summary"
+  theme: "telefonica_corporate"
+  responsive: true
+  auto_refresh: true
+  refresh_interval_seconds: 300
+
+# 🎨 TEMA VISUAL TELEFÓNICA
+theme:
+  primary_color: "#004481"      # Azul Telefónica
+  secondary_color: "#00A9CE"    # Azul claro
+  accent_color: "#E20074"       # Magenta Telefónica
+  success_color: "#00B04F"      # Verde éxito
+  warning_color: "#FF8C00"      # Naranja alerta
+  error_color: "#E20074"        # Magenta error
+  background_color: "#F8F9FA"   # Gris claro
+  text_color: "#2C3E50"         # Gris oscuro
+  
+  fonts:
+    primary: "Telefonica-Regular, Arial, sans-serif"
+    secondary: "Telefonica-Light, Arial, sans-serif"
+    monospace: "Monaco, 'Courier New', monospace"
+
+# 📱 LAYOUT Y ESTRUCTURA
+layout:
+  # 🔍 BARRA DE FILTROS (Sticky Top)
+  filter_bar:
+    position: "top"
+    sticky: true
+    height: "120px"
+    background: "#FFFFFF"
+    border: true
+    
+    filters:
+      - type: "date_range"
+        field: "fecha"
+        label: "Período"
+        default: "last_30_days"
+        position: "left"
+        width: "200px"
+        presets: ["today", "last_7_days", "last_30_days", "current_month", "last_month"]
+        
+      - type: "multi_select"
+        field: "ejecutivo"
+        label: "Ejecutivos"
+        position: "left"
+        width: "220px"
+        searchable: true
+        max_selections: 10
+        show_select_all: true
+        
+      - type: "multi_select"
+        field: "servicio"
+        label: "Servicio"
+        position: "center"
+        width: "150px"
+        default: ["MOVIL", "FIJA"]
+        
+      - type: "multi_select"
+        field: "cartera"
+        label: "Cartera"
+        position: "center"
+        width: "180px"
+        
+      - type: "single_select"
+        field: "canal"
+        label: "Canal"
+        position: "right"
+        width: "120px"
+        default: "all"
+        options: ["all", "CALL", "VOICEBOT"]
+
+  # 📊 TARJETAS KPI (Header Section)
+  kpi_section:
+    position: "header"
+    height: "140px"
+    columns: 4
+    gap: "20px"
+    
+    kpis:
+      - metric: "tasa_contactabilidad"
+        title: "Contactabilidad"
+        format: "percentage_1"
+        color: "primary"
+        icon: "phone"
+        trend: true
+        target: 55.0
+        comparison: "week_over_week"
+        
+      - metric: "pdps_por_hora"
+        title: "PDPs/Hora"
+        format: "decimal_2"
+        color: "success"
+        icon: "trending-up"
+        trend: true
+        target: 3.0
+        comparison: "week_over_week"
+        
+      - metric: "total_gestiones"
+        title: "Total Gestiones"
+        format: "integer_k"
+        color: "secondary"
+        icon: "activity"
+        trend: true
+        comparison: "week_over_week"
+        
+      - metric: "monto_gestionado"
+        title: "Monto Gestionado"
+        format: "currency_k"
+        currency: "PEN"
+        color: "accent"
+        icon: "dollar-sign"
+        trend: true
+        comparison: "week_over_week"
+
+  # 📈 SECCIÓN PRINCIPAL (Main Content)
+  main_section:
+    position: "main"
+    height: "600px"
+    layout: "two_columns"
+    gap: "30px"
+    
+    # Columna izquierda - Tabla ejecutivos
+    left_column:
+      width: "55%"
+      components:
+        - type: "data_table"
+          title: "Performance por Ejecutivo"
+          subtitle: "Ranking de productividad y contactabilidad"
+          
+          columns:
+            - field: "ejecutivo"
+              label: "Ejecutivo"
+              width: "200px"
+              sortable: true
+              filterable: true
+              
+            - field: "total_gestiones"
+              label: "Gestiones"
+              width: "100px"
+              format: "integer"
+              sortable: true
+              alignment: "center"
+              
+            - field: "tasa_contactabilidad"
+              label: "Contact. %"
+              width: "110px"
+              format: "percentage_1"
+              sortable: true
+              alignment: "center"
+              color_scale:
+                type: "threshold"
+                thresholds: [30, 45, 60, 75]
+                colors: ["#E20074", "#FF8C00", "#00A9CE", "#00B04F"]
+                
+            - field: "pdps_por_hora"
+              label: "PDPs/h"
+              width: "100px"
+              format: "decimal_2"
+              sortable: true
+              alignment: "center"
+              color_scale:
+                type: "threshold"
+                thresholds: [1, 2, 3.5, 5]
+                colors: ["#E20074", "#FF8C00", "#00A9CE", "#00B04F"]
+                
+            - field: "monto_gestionado"
+              label: "Monto"
+              width: "120px"
+              format: "currency_k"
+              currency: "PEN"
+              sortable: true
+              alignment: "right"
+          
+          settings:
+            pagination: 15
+            sorting:
+              default_field: "pdps_por_hora"
+              default_direction: "desc"
+            row_highlighting: true
+            export_enabled: true
+            
+    # Columna derecha - Gráficos de tendencia
+    right_column:
+      width: "45%"
+      components:
+        - type: "time_series_chart"
+          title: "Tendencia de Contactabilidad"
+          subtitle: "Evolución diaria de tasa de contacto"
+          height: "280px"
+          
+          config:
+            x_axis: "fecha"
+            y_axis: "tasa_contactabilidad"
+            chart_type: "line_with_area"
+            color: "#004481"
+            show_points: true
+            smooth_line: true
+            
+            target_line:
+              value: 55
+              color: "#E20074"
+              style: "dashed"
+              label: "Meta: 55%"
+              
+            y_axis_config:
+              min: 0
+              max: 100
+              format: "percentage"
+              grid_lines: true
+              
+        - type: "comparison_chart"
+          title: "Comparativa Canal: Call vs VoiceBot"
+          subtitle: "Efectividad por tipo de gestión"
+          height: "280px"
+          margin_top: "40px"
+          
+          config:
+            dimension: "canal"
+            metrics: ["tasa_contactabilidad", "pdps_por_hora"]
+            chart_type: "grouped_bar"
+            colors: ["#004481", "#00A9CE"]
+            
+            legend:
+              position: "bottom"
+              show: true
+              
+            y_axes:
+              left: 
+                metric: "tasa_contactabilidad"
+                format: "percentage"
+                color: "#004481"
+              right:
+                metric: "pdps_por_hora"
+                format: "decimal"
+                color: "#00A9CE"
+
+  # 🔍 SECCIÓN DE ANÁLISIS DETALLADO (Bottom Section)
+  analysis_section:
+    position: "bottom"
+    height: "400px"
+    layout: "three_columns"
+    gap: "20px"
+    
+    columns:
+      # Análisis por servicio
+      - type: "metric_breakdown"
+        title: "Análisis por Servicio"
+        width: "33%"
+        
+        config:
+          dimension: "servicio"
+          primary_metric: "tasa_contactabilidad"
+          secondary_metrics: ["total_gestiones", "pdps_por_hora"]
+          chart_type: "donut"
+          show_percentages: true
+          
+      # Análisis por cartera
+      - type: "heatmap"
+        title: "Performance Cartera vs Canal"
+        width: "34%"
+        
+        config:
+          x_dimension: "cartera"
+          y_dimension: "canal"
+          metric: "tasa_contactabilidad"
+          color_scheme: "telefonica_gradient"
+          show_values: true
+          cell_labels: true
+          
+      # Top insights automáticos
+      - type: "insights_panel"
+        title: "Insights Automáticos"
+        width: "33%"
+        
+        config:
+          max_insights: 5
+          insight_types: 
+            - "performance_anomalies"
+            - "trend_changes"
+            - "comparative_analysis"
+            - "goal_achievements"
+          auto_refresh: true
+          show_recommendations: true
+
+# 🎛️ INTERACTIVIDAD Y CROSS-FILTERING
+interactivity:
+  cross_filtering:
+    enabled: true
+    response_time_target: 200  # ms
+    
+    # Configuración de qué componentes afectan a cuáles
+    relationships:
+      - source: "kpi_section"
+        targets: ["main_section", "analysis_section"]
+        
+      - source: "data_table"
+        field: "ejecutivo"
+        targets: ["time_series_chart", "comparison_chart"]
+        interaction: "click_row"
+        
+      - source: "time_series_chart"
+        field: "fecha"
+        targets: ["data_table", "analysis_section"]
+        interaction: "brush_selection"
+        
+  drill_down:
+    enabled: true
+    levels:
+      - dimension: "ejecutivo"
+        children: ["fecha", "canal", "cartera"]
+        
+      - dimension: "cartera"
+        children: ["servicio", "ejecutivo"]
+        
+  tooltips:
+    enabled: true
+    style: "rich"
+    include_comparisons: true
+    show_targets: true
+
+# 📱 RESPONSIVE DESIGN
+responsive:
+  mobile:
+    breakpoint: "768px"
+    layout: "single_column"
+    components:
+      - "filter_bar"  # Colapsible
+      - "kpi_section"  # 2x2 grid
+      - "data_table"  # Horizontal scroll
+      - "time_series_chart"
+      
+  tablet:
+    breakpoint: "1024px"
+    layout: "two_columns"
+    adjustments:
+      kpi_section: "2x2_grid"
+      main_section: "stacked"
+
+# 🔒 PERMISOS Y CONFIGURACIÓN
+permissions:
+  roles:
+    viewer:
+      can_view: true
+      can_export: false
+      can_modify_filters: true
+      
+    analyst:
+      can_view: true
+      can_export: true
+      can_modify_filters: true
+      can_save_views: true
+      
+    admin:
+      can_view: true
+      can_export: true
+      can_modify_filters: true
+      can_save_views: true
+      can_modify_dashboard: true
+
+# 📊 CONFIGURACIÓN DE EXPORTACIÓN
+export:
+  formats: ["pdf", "excel", "csv", "png"]
+  
+  pdf:
+    orientation: "landscape"
+    include_filters: true
+    include_timestamp: true
+    logo: "telefonica_logo.png"
+    
+  excel:
+    include_raw_data: true
+    include_charts: true
+    separate_sheets: true
+
+# ⚡ PERFORMANCE Y CACHING
+performance:
+  caching:
+    enabled: true
+    ttl_seconds: 300
+    cache_by: ["filters", "date_range"]
+    
+  lazy_loading:
+    enabled: true
+    threshold: "viewport_50%"
+    
+  query_optimization:
+    max_records: 10000
+    pagination_size: 50
+    auto_aggregate: true
+
+# 📝 METADATOS
+metadata:
+  version: "1.0.0"
+  created_date: "2025-06-10"
+  created_by: "Pulso-AI Dashboard Generator"
+  business_owner: "Gerencia de Cobranza Telefónica"
+  technical_contact: "equipobi@telefonica.pe"
+  
+  documentation:
+    user_guide: "docs/telefonica/dashboard_user_guide.md"
+    technical_specs: "docs/telefonica/dashboard_technical_specs.md"
+    
+  tags: ["cobranza", "productividad", "telefonica", "dashboard", "executive"]
+  
+  sla:
+    availability: "99.9%"
+    response_time: "< 3 seconds"
+    data_freshness: "< 4 hours"
