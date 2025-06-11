@@ -1,141 +1,139 @@
 # 🔄 Mapeo de Campos BigQuery → Modelo de Dominio
-# Telefónica del Perú - Transformación de datos desde tablas BATCH originales
+# Telefónica del Perú - FUENTES REALES IDENTIFICADAS
 
-# 📊 TABLAS FUENTE BATCH - CORRECCIÓN CRÍTICA
+# 📊 FUENTES DE DATOS REALES - ESTRUCTURA IDENTIFICADA POR BIGQUERY
 source:
   project_id: "mibot-222814"
   dataset: "BI_USA"
-  table_pattern: "batch_P3fV4dWNeMkN5RJMhV8e_*"
-  description: "Tablas batch originales de gestiones de cobranza Telefónica"
-  
-  # Tablas batch específicas identificadas
-  main_tables:
-    gestiones: "batch_P3fV4dWNeMkN5RJMhV8e_gestiones"
-    clientes: "batch_P3fV4dWNeMkN5RJMhV8e_clientes"
-    deudas: "batch_P3fV4dWNeMkN5RJMhV8e_deudas"
-    campanas: "batch_P3fV4dWNeMkN5RJMhV8e_campanas"
-    pagos: "batch_P3fV4dWNeMkN5RJMhV8e_pagos"
-    ejecutivos: "batch_P3fV4dWNeMkN5RJMhV8e_ejecutivos"
+  description: "Tablas originales y de gestiones operativas de Telefónica"
 
-# 🎯 MAPEO DE CAMPOS POR TABLA BATCH
+# 🏗️ TABLAS IDENTIFICADAS POR CATEGORÍA
 
-# 📞 TABLA: batch_P3fV4dWNeMkN5RJMhV8e_gestiones
-gestiones_mapping:
-  source_table: "batch_P3fV4dWNeMkN5RJMhV8e_gestiones"
-  description: "Tabla principal de gestiones de cobranza"
+## 📋 TABLAS BATCH - DATOS MAESTROS Y TRANSACCIONALES
+batch_tables:
+  asignacion:
+    table: "batch_P3fV4dWNeMkN5RJMhV8e_asignacion"
+    description: "Datos maestros de clientes asignados"
+    partition: "DATETIME_TRUNC(creado_el, MONTH)"
+    
+  master_luna:
+    table: "batch_P3fV4dWNeMkN5RJMhV8e_master_luna"
+    description: "Datos personales de clientes"
+    partition: "DATETIME_TRUNC(creado_el, MONTH)"
+    
+  master_contacto:
+    table: "batch_P3fV4dWNeMkN5RJMhV8e_master_contacto"
+    description: "Información de contactabilidad"
+    partition: "DATETIME_TRUNC(creado_el, MONTH)"
+    
+  tran_deuda:
+    table: "batch_P3fV4dWNeMkN5RJMhV8e_tran_deuda"
+    description: "Transacciones de deuda por documento"
+    partition: "DATETIME_TRUNC(creado_el, MONTH)"
+    
+  pagos:
+    table: "batch_P3fV4dWNeMkN5RJMhV8e_pagos"
+    description: "Pagos realizados por documento"
+    partition: "DATETIME_TRUNC(creado_el, MONTH)"
+    
+  campanas:
+    table: "batch_P3fV4dWNeMkN5RJMhV8e_campanas"
+    description: "Asignación de campañas por cuenta"
+    partition: "DATETIME_TRUNC(creado_el, MONTH)"
+
+## 🎯 TABLAS OPERATIVAS - GESTIONES REALES
+operational_tables:
+  gestiones_call:
+    table: "mibotair_P3fV4dWNeMkN5RJMhV8e"
+    description: "Gestiones realizadas por ejecutivos humanos (CALL)"
+    partition: "TIMESTAMP_TRUNC(_PARTITIONTIME, MONTH)"
+    
+  gestiones_voicebot:
+    table: "voicebot_P3fV4dWNeMkN5RJMhV8e"
+    description: "Gestiones automatizadas por voicebot"
+    partition: "DATETIME_TRUNC(date, MONTH)"
+
+## 🔧 TABLAS DE HOMOLOGACIÓN
+homologation_tables:
+  call_homologation:
+    table: "homologacion_P3fV4dWNeMkN5RJMhV8e_call"
+    description: "Reglas de homologación para gestiones CALL"
+    
+  voicebot_homologation:
+    table: "homologacion_P3fV4dWNeMkN5RJMhV8e_voicebot"
+    description: "Reglas de homologación para gestiones VOICEBOT"
+
+# 🎯 MAPEO DETALLADO POR TABLA
+
+## 📋 ASIGNACIÓN - Datos Maestros de Clientes
+asignacion_mapping:
+  source_table: "batch_P3fV4dWNeMkN5RJMhV8e_asignacion"
   
   fields:
-    # Identificadores
     cod_luna:
       target_field: "client_id"
       data_type: "string"
       description: "Identificador único del cliente"
-      validation:
-        - not_null: true
-        - format: "numeric_string"
       transformation: "CAST(cod_luna AS STRING)"
+      primary_key: true
       
-    id_gestion:
-      target_field: "management_id"
+    cuenta:
+      target_field: "account_number"
       data_type: "string"
-      description: "ID único de la gestión"
-      validation:
-        - not_null: true
-      transformation: "CAST(id_gestion AS STRING)"
+      description: "Número de cuenta"
+      transformation: "CAST(cuenta AS STRING)"
       
-    # Datos del ejecutivo
-    ejecutivo:
-      target_field: "agent_name"
+    telefono:
+      target_field: "phone_number"
       data_type: "string"
-      description: "Nombre del ejecutivo/agente"
-      validation:
-        - not_null: true
-        - exclude_values: ["DISCADOR", "SISTEMA", "NULL", ""]
-      transformation: "UPPER(TRIM(ejecutivo))"
-      business_rules:
-        - "Si ejecutivo IS NULL O = 'DISCADOR' → 'SISTEMA_AUTOMATICO'"
-        - "Si ejecutivo = 'VOICEBOT' → 'VOICEBOT_AUTOMATICO'"
+      description: "Teléfono principal"
+      transformation: "CAST(telefono AS STRING)"
+      
+    negocio:
+      target_field: "service_type"
+      data_type: "string"
+      description: "Tipo de servicio (MOVIL/FIJA)"
+      transformation: "UPPER(TRIM(negocio))"
+      business_mapping:
+        "MOVIL": "MOVIL"
+        "FIJA": "FIJA"
+        "FIJO": "FIJA"
         
-    dni_ejecutivo:
-      target_field: "agent_dni"
+    zona:
+      target_field: "geographic_zone"
       data_type: "string"
-      description: "DNI del ejecutivo"
-      transformation: "TRIM(dni_ejecutivo)"
-      validation:
-        - format: "dni_peru"  # 8 dígitos
+      description: "Zona geográfica"
+      transformation: "TRIM(zona)"
+      
+    cod_sistema:
+      target_field: "system_code"
+      data_type: "integer"
+      description: "Código de sistema (2=FIJA, 4=MOVIL)"
+      business_mapping:
+        2: "FIJA"
+        4: "MOVIL"
         
-    # Dimensiones de negocio
-    canal:
-      target_field: "contact_channel"
+    tramo_gestion:
+      target_field: "management_segment"
       data_type: "string"
-      description: "Canal de contacto utilizado"
+      description: "Segmento de gestión"
+      transformation: "TRIM(tramo_gestion)"
+      
+    decil_contacto:
+      target_field: "contact_decile"
+      data_type: "integer"
+      description: "Decil de contactabilidad (1-10)"
       validation:
-        - not_null: true
-        - valid_values: ["CALL", "VOICEBOT"]
-      transformation: "CASE
-        WHEN UPPER(canal) LIKE '%VOICE%' OR UPPER(canal) LIKE '%BOT%' THEN 'VOICEBOT'
-        WHEN UPPER(canal) LIKE '%CALL%' OR UPPER(canal) LIKE '%TELEFON%' THEN 'CALL'
-        ELSE 'CALL'  
-      END"
-      
-    # Resultados de gestión
-    tipificacion:
-      target_field: "contact_result_raw"
-      data_type: "string"
-      description: "Tipificación original de la gestión"
-      validation:
-        - not_null: true
-      transformation: "UPPER(TRIM(tipificacion))"
-      
-    es_contacto:
-      target_field: "is_contact"
-      data_type: "boolean"
-      description: "Flag si hubo contacto"
-      transformation: "COALESCE(es_contacto, false)"
-      
-    es_contacto_efectivo:
-      target_field: "is_effective_contact"
-      data_type: "boolean"
-      description: "Flag si fue contacto efectivo"
-      transformation: "COALESCE(es_contacto_efectivo, false)"
-      
-    es_pdp:
-      target_field: "is_payment_promise"
-      data_type: "boolean"
-      description: "Flag si resultó en PDP"
-      transformation: "COALESCE(es_pdp, false)"
-      
-    # Dimensiones temporales
-    fecha_gestion:
-      target_field: "management_date"
+        - range: [1, 10]
+        
+    fecha_corte:
+      target_field: "cutoff_date"
       data_type: "date"
-      description: "Fecha de la gestión"
-      validation:
-        - not_null: true
-        - range: "2020-01-01 to CURRENT_DATE"
-      transformation: "DATE(fecha_gestion)"
-      
-    hora_gestion:
-      target_field: "management_hour"
-      data_type: "integer"
-      description: "Hora de la gestión (0-23)"
-      validation:
-        - range: [0, 23]
-      transformation: "EXTRACT(HOUR FROM TIMESTAMP(fecha_gestion, hora_gestion))"
-      
-    duracion_segundos:
-      target_field: "duration_seconds"
-      data_type: "integer"
-      description: "Duración de la gestión en segundos"
-      validation:
-        - not_negative: true
-        - max_value: 3600  # 1 hora máximo
-      transformation: "COALESCE(duracion_segundos, 0)"
+      description: "Fecha de corte de asignación"
 
-# 👥 TABLA: batch_P3fV4dWNeMkN5RJMhV8e_clientes
-clientes_mapping:
-  source_table: "batch_P3fV4dWNeMkN5RJMhV8e_clientes"
-  description: "Datos maestros de clientes"
+## 👥 MASTER LUNA - Datos Personales
+master_luna_mapping:
+  source_table: "batch_P3fV4dWNeMkN5RJMhV8e_master_luna"
   
   fields:
     cod_luna:
@@ -143,302 +141,323 @@ clientes_mapping:
       data_type: "string"
       primary_key: true
       
-    cliente:
-      target_field: "client_name"
+    nombre:
+      target_field: "first_name"
       data_type: "string"
-      description: "Nombre del cliente"
-      transformation: "TRIM(cliente)"
+      transformation: "TRIM(nombre)"
       
-    dni:
-      target_field: "client_dni"
+    apellido_paterno:
+      target_field: "last_name"
       data_type: "string"
-      description: "DNI del cliente"
-      validation:
-        - format: "dni_peru"
-      transformation: "TRIM(dni)"
+      transformation: "TRIM(apellido_paterno)"
       
-    servicio:
-      target_field: "service_type"
+    apellido_materno:
+      target_field: "mother_last_name"
       data_type: "string"
-      description: "Tipo de servicio"
-      validation:
-        - valid_values: ["MOVIL", "FIJA"]
-      transformation: "UPPER(TRIM(servicio))"
-      
-    tipo_cartera:
-      target_field: "portfolio_type"
-      data_type: "string"
-      description: "Tipo de cartera"
-      transformation: "CASE 
-        WHEN tipo_cartera LIKE '%Temprana%' THEN 'Gestión Temprana'
-        WHEN tipo_cartera LIKE '%AN%' OR tipo_cartera LIKE '%Altas%' THEN 'Altas Nuevas'  
-        WHEN tipo_cartera LIKE '%CF%' THEN 'CF'
-        WHEN tipo_cartera LIKE '%Regular%' THEN 'Regular'
-        ELSE 'Otros'
-      END"
-      
-    zona_geografica:
-      target_field: "geographic_zone"
-      data_type: "string"
-      description: "Zona territorial"
-      transformation: "TRIM(zona_geografica)"
+      transformation: "TRIM(apellido_materno)"
 
-# 💰 TABLA: batch_P3fV4dWNeMkN5RJMhV8e_deudas
-deudas_mapping:
-  source_table: "batch_P3fV4dWNeMkN5RJMhV8e_deudas"
-  description: "Información de deudas por documento"
+## 💰 TRANSACCIONES DEUDA
+tran_deuda_mapping:
+  source_table: "batch_P3fV4dWNeMkN5RJMhV8e_tran_deuda"
   
   fields:
-    cod_luna:
-      target_field: "client_id"
-      data_type: "string"
-      
     nro_documento:
       target_field: "document_number"
       data_type: "string"
-      description: "Número de documento en deuda"
       primary_key: true
       
-    monto_deuda:
-      target_field: "debt_amount"
+    cod_cuenta:
+      target_field: "account_code"
+      data_type: "string"
+      
+    monto_exigible:
+      target_field: "outstanding_amount"
       data_type: "decimal"
       description: "Monto de deuda en PEN"
       validation:
         - not_negative: true
-      transformation: "COALESCE(monto_deuda, 0.0)"
       currency: "PEN"
-      
-    dias_mora:
-      target_field: "days_overdue"
-      data_type: "integer"
-      description: "Días de mora"
-      validation:
-        - not_negative: true
-      transformation: "COALESCE(dias_mora, 0)"
       
     fecha_vencimiento:
       target_field: "due_date"
       data_type: "date"
       description: "Fecha de vencimiento"
-      transformation: "DATE(fecha_vencimiento)"
 
-# 📅 TABLA: batch_P3fV4dWNeMkN5RJMhV8e_campanas
-campanas_mapping:
-  source_table: "batch_P3fV4dWNeMkN5RJMhV8e_campanas"
-  description: "Información de campañas de cobranza"
-  
-  fields:
-    id_campana:
-      target_field: "campaign_id"
-      data_type: "string"
-      primary_key: true
-      
-    nombre_campana:
-      target_field: "campaign_name"
-      data_type: "string"
-      transformation: "TRIM(nombre_campana)"
-      
-    fecha_inicio:
-      target_field: "start_date"
-      data_type: "date"
-      transformation: "DATE(fecha_inicio)"
-      
-    fecha_fin:
-      target_field: "end_date"
-      data_type: "date"
-      transformation: "DATE(fecha_fin)"
-      
-    servicio:
-      target_field: "service_type"
-      data_type: "string"
-      validation:
-        - valid_values: ["MOVIL", "FIJA"]
-
-# 💸 TABLA: batch_P3fV4dWNeMkN5RJMhV8e_pagos
+## 💸 PAGOS
 pagos_mapping:
   source_table: "batch_P3fV4dWNeMkN5RJMhV8e_pagos"
-  description: "Pagos realizados por los clientes"
   
   fields:
-    cod_luna:
-      target_field: "client_id"
-      data_type: "string"
-      
     nro_documento:
       target_field: "document_number"
       data_type: "string"
       
-    fecha_pago:
-      target_field: "payment_date"
-      data_type: "date"
-      transformation: "DATE(fecha_pago)"
-      
-    monto_pago:
+    monto_cancelado:
       target_field: "payment_amount"
       data_type: "decimal"
       description: "Monto pagado en PEN"
       validation:
         - not_negative: true
-      transformation: "COALESCE(monto_pago, 0.0)"
       currency: "PEN"
+      
+    fecha_pago:
+      target_field: "payment_date"
+      data_type: "date"
+      
+    cod_sistema:
+      target_field: "system_code"
+      data_type: "string"
+      description: "Código de sistema para mapear servicio"
 
-# 👨‍💼 TABLA: batch_P3fV4dWNeMkN5RJMhV8e_ejecutivos
-ejecutivos_mapping:
-  source_table: "batch_P3fV4dWNeMkN5RJMhV8e_ejecutivos"
-  description: "Datos maestros de ejecutivos"
+## 📞 GESTIONES CALL - MibotAir
+mibotair_mapping:
+  source_table: "mibotair_P3fV4dWNeMkN5RJMhV8e"
   
   fields:
-    ejecutivo:
+    document:
+      target_field: "document_number"
+      data_type: "string"
+      description: "Documento gestionado"
+      
+    date:
+      target_field: "management_datetime"
+      data_type: "datetime"
+      description: "Fecha y hora de gestión"
+      
+    management:
+      target_field: "management_type_raw"
+      data_type: "string"
+      description: "Tipificación original"
+      transformation: "UPPER(TRIM(management))"
+      
+    sub_management:
+      target_field: "sub_management_raw"
+      data_type: "string"
+      description: "Sub-tipificación"
+      transformation: "UPPER(TRIM(sub_management))"
+      
+    nombre_agente:
       target_field: "agent_name"
       data_type: "string"
-      primary_key: true
+      description: "Nombre del ejecutivo"
+      transformation: "UPPER(TRIM(nombre_agente))"
       
-    dni_ejecutivo:
-      target_field: "agent_dni"
-      data_type: "string"
+    duracion:
+      target_field: "duration_seconds"
+      data_type: "integer"
+      description: "Duración en segundos"
       validation:
-        - format: "dni_peru"
+        - not_negative: true
+        - max_value: 3600
         
-    supervisor:
-      target_field: "supervisor_name"
-      data_type: "string"
-      transformation: "TRIM(supervisor)"
+    monto_compromiso:
+      target_field: "commitment_amount"
+      data_type: "decimal"
+      description: "Monto comprometido en PEN"
+      currency: "PEN"
       
-    fecha_ingreso:
-      target_field: "hire_date"
+    fecha_compromiso:
+      target_field: "commitment_date"
       data_type: "date"
-      transformation: "DATE(fecha_ingreso)"
+      description: "Fecha del compromiso de pago"
       
-    activo:
-      target_field: "is_active"
-      data_type: "boolean"
-      transformation: "COALESCE(activo, true)"
-
-# 🧮 CAMPOS CALCULADOS MULTITABLA
-calculated_fields:
-  # Métricas de contactabilidad
-  tasa_contactabilidad:
-    formula: "COUNT(CASE WHEN is_effective_contact THEN 1 END) / COUNT(*) * 100"
-    data_type: "decimal"
-    description: "Porcentaje de contactabilidad efectiva"
-    group_by: ["agent_name", "management_date"]
-    
-  pdps_por_hora:
-    formula: "COUNT(CASE WHEN is_payment_promise THEN 1 END) / SUM(duration_seconds) * 3600"
-    data_type: "decimal"
-    description: "PDPs generados por hora"
-    group_by: ["agent_name", "management_date"]
-    
-  productividad_diaria:
-    formula: "COUNT(*) / COUNT(DISTINCT management_date)"
-    data_type: "decimal"
-    description: "Gestiones promedio por día"
-    group_by: ["agent_name"]
-
-# 🔗 RELACIONES ENTRE TABLAS BATCH
-table_relationships:
-  gestiones_to_clientes:
-    type: "many_to_one"
-    foreign_key: "gestiones.cod_luna"
-    primary_key: "clientes.cod_luna"
-    
-  gestiones_to_deudas:
-    type: "many_to_many"
-    join_condition: "gestiones.cod_luna = deudas.cod_luna"
-    
-  deudas_to_pagos:
-    type: "one_to_many"
-    foreign_key: "pagos.nro_documento"
-    primary_key: "deudas.nro_documento"
-    
-  gestiones_to_ejecutivos:
-    type: "many_to_one"
-    foreign_key: "gestiones.ejecutivo"
-    primary_key: "ejecutivos.ejecutivo"
-
-# 🔍 VALIDACIONES DE CALIDAD MULTITABLA
-data_quality_rules:
-  referential_integrity:
-    - rule: "Todos los cod_luna en gestiones deben existir en clientes"
-      severity: "error"
-      check_query: "LEFT JOIN clientes ON gestiones.cod_luna = clientes.cod_luna WHERE clientes.cod_luna IS NULL"
+    campaign_id:
+      target_field: "campaign_id"
+      data_type: "string"
       
-    - rule: "Todos los ejecutivos en gestiones deben existir en ejecutivos"
-      severity: "warning"
-      check_query: "LEFT JOIN ejecutivos ON gestiones.ejecutivo = ejecutivos.ejecutivo WHERE ejecutivos.ejecutivo IS NULL"
-      
-  business_consistency:
-    - rule: "No puede haber gestiones en fechas futuras"
-      severity: "error"
-      check_query: "WHERE gestiones.fecha_gestion > CURRENT_DATE()"
-      
-    - rule: "PDPs solo pueden existir con contacto efectivo"
-      severity: "error"
-      check_query: "WHERE gestiones.es_pdp = true AND gestiones.es_contacto_efectivo = false"
+    phone:
+      target_field: "phone_contacted"
+      data_type: "string"
+      transformation: "CAST(phone AS STRING)"
 
-# 📊 QUERY DE INTEGRACIÓN PRINCIPAL
-integration_query: |
-  WITH gestiones_enriquecidas AS (
+## 🤖 GESTIONES VOICEBOT
+voicebot_mapping:
+  source_table: "voicebot_P3fV4dWNeMkN5RJMhV8e"
+  
+  fields:
+    document:
+      target_field: "document_number"
+      data_type: "string"
+      
+    date:
+      target_field: "management_datetime"
+      data_type: "datetime"
+      
+    management:
+      target_field: "management_type_raw"
+      data_type: "string"
+      transformation: "UPPER(TRIM(management))"
+      
+    sub_management:
+      target_field: "sub_management_raw"
+      data_type: "string"
+      transformation: "UPPER(TRIM(sub_management))"
+      
+    duracion:
+      target_field: "duration_seconds"
+      data_type: "integer"
+      validation:
+        - not_negative: true
+        - max_value: 600  # 10 minutos máximo para bot
+        
+    fecha_compromiso:
+      target_field: "commitment_date"
+      data_type: "datetime"
+      
+    compromiso:
+      target_field: "commitment_flag"
+      data_type: "string"
+      description: "Flag de compromiso del bot"
+      
+    interactions:
+      target_field: "bot_interactions"
+      data_type: "string"
+      description: "Interacciones del bot"
+      
+    responses:
+      target_field: "bot_responses"
+      data_type: "string"
+      description: "Respuestas del bot"
+
+# 🔄 INTEGRACIÓN Y UNIFICACIÓN
+
+## QUERY UNIFICADA - GESTIONES CALL + VOICEBOT
+unified_gestiones_query: |
+  WITH gestiones_call AS (
     SELECT 
-      g.cod_luna,
-      g.ejecutivo,
-      g.fecha_gestion,
-      g.canal,
-      g.tipificacion,
-      g.es_contacto_efectivo,
-      g.es_pdp,
-      g.duracion_segundos,
-      c.servicio,
-      c.tipo_cartera,
-      c.zona_geografica,
-      e.supervisor,
-      e.activo as ejecutivo_activo
-    FROM `{project}.{dataset}.batch_P3fV4dWNeMkN5RJMhV8e_gestiones` g
-    LEFT JOIN `{project}.{dataset}.batch_P3fV4dWNeMkN5RJMhV8e_clientes` c
-      ON g.cod_luna = c.cod_luna
-    LEFT JOIN `{project}.{dataset}.batch_P3fV4dWNeMkN5RJMhV8e_ejecutivos` e
-      ON g.ejecutivo = e.ejecutivo
-    WHERE DATE(g.fecha_gestion) = '{partition_date}'
-      AND g.cod_luna IS NOT NULL
-      AND g.ejecutivo IS NOT NULL
+      document as nro_documento,
+      EXTRACT(DATE FROM date) as fecha_gestion,
+      EXTRACT(HOUR FROM date) as hora_gestion,
+      'CALL' as canal,
+      nombre_agente as ejecutivo,
+      management as tipificacion_raw,
+      sub_management as subtipificacion_raw,
+      duracion as duracion_segundos,
+      monto_compromiso,
+      fecha_compromiso,
+      campaign_id,
+      phone as telefono_contactado,
+      date as fecha_hora_completa
+    FROM `{project}.{dataset}.mibotair_P3fV4dWNeMkN5RJMhV8e`
+    WHERE DATE(date) = '{partition_date}'
   ),
-  metricas_calculadas AS (
-    SELECT
-      ejecutivo,
-      servicio,
-      tipo_cartera,
-      canal,
-      fecha_gestion,
-      COUNT(*) as total_gestiones,
-      COUNT(CASE WHEN es_contacto_efectivo THEN 1 END) as contactos_efectivos,
-      COUNT(CASE WHEN es_pdp THEN 1 END) as gestiones_pdp,
-      SUM(duracion_segundos) as duracion_total_segundos,
-      COUNT(DISTINCT cod_luna) as clientes_unicos_gestionados
-    FROM gestiones_enriquecidas
-    GROUP BY ejecutivo, servicio, tipo_cartera, canal, fecha_gestion
+  gestiones_voicebot AS (
+    SELECT 
+      document as nro_documento,
+      EXTRACT(DATE FROM date) as fecha_gestion,
+      EXTRACT(HOUR FROM date) as hora_gestion,
+      'VOICEBOT' as canal,
+      'VOICEBOT_AUTOMATICO' as ejecutivo,
+      management as tipificacion_raw,
+      sub_management as subtipificacion_raw,
+      duracion as duracion_segundos,
+      NULL as monto_compromiso,
+      EXTRACT(DATE FROM fecha_compromiso) as fecha_compromiso,
+      campaign_id,
+      CAST(phone AS STRING) as telefono_contactado,
+      date as fecha_hora_completa
+    FROM `{project}.{dataset}.voicebot_P3fV4dWNeMkN5RJMhV8e`
+    WHERE DATE(date) = '{partition_date}'
+  ),
+  gestiones_unificadas AS (
+    SELECT * FROM gestiones_call
+    UNION ALL
+    SELECT * FROM gestiones_voicebot
   )
   SELECT 
-    *,
-    ROUND(contactos_efectivos / total_gestiones * 100, 2) as tasa_contactabilidad,
-    ROUND(gestiones_pdp / (duracion_total_segundos / 3600), 2) as pdps_por_hora
-  FROM metricas_calculadas
+    g.*,
+    a.cod_luna,
+    a.negocio as servicio,
+    a.zona as zona_geografica,
+    a.tramo_gestion as tipo_cartera,
+    a.decil_contacto,
+    ml.nombre,
+    ml.apellido_paterno,
+    td.monto_exigible
+  FROM gestiones_unificadas g
+  LEFT JOIN `{project}.{dataset}.batch_P3fV4dWNeMkN5RJMhV8e_tran_deuda` td
+    ON g.nro_documento = td.nro_documento
+  LEFT JOIN `{project}.{dataset}.batch_P3fV4dWNeMkN5RJMhV8e_asignacion` a
+    ON td.cod_cuenta = CAST(a.cuenta AS STRING)
+  LEFT JOIN `{project}.{dataset}.batch_P3fV4dWNeMkN5RJMhV8e_master_luna` ml
+    ON a.cod_luna = ml.cod_luna
 
-# 📝 METADATOS ACTUALIZADOS
+## HOMOLOGACIÓN USANDO TABLAS EXISTENTES
+homologation_query: |
+  WITH gestiones_con_homologacion AS (
+    SELECT 
+      g.*,
+      h.tipo_getion as tipificacion_homologada,
+      h.pdp as es_pdp_homologado,
+      CASE 
+        WHEN h.tipo_getion LIKE '%CONTACTO%EFECTIVO%' THEN true
+        ELSE false
+      END as es_contacto_efectivo
+    FROM gestiones_unificadas g
+    LEFT JOIN `{project}.{dataset}.homologacion_P3fV4dWNeMkN5RJMhV8e_call` h
+      ON g.tipificacion_raw = h.n1 
+      AND (g.subtipificacion_raw = h.n2 OR h.n2 IS NULL)
+    WHERE g.canal = 'CALL'
+    
+    UNION ALL
+    
+    SELECT 
+      g.*,
+      hv.tipo_getion as tipificacion_homologada,
+      hv.pdp as es_pdp_homologado,
+      CASE 
+        WHEN hv.tipo_getion LIKE '%CONTACTO%EFECTIVO%' THEN true
+        ELSE false
+      END as es_contacto_efectivo
+    FROM gestiones_unificadas g
+    LEFT JOIN `{project}.{dataset}.homologacion_P3fV4dWNeMkN5RJMhV8e_voicebot` hv
+      ON g.tipificacion_raw = hv.management
+    WHERE g.canal = 'VOICEBOT'
+  )
+
+# 🧮 MÉTRICAS CALCULADAS
+calculated_metrics:
+  tasa_contactabilidad:
+    formula: "SUM(CASE WHEN es_contacto_efectivo THEN 1 ELSE 0 END) / COUNT(*) * 100"
+    group_by: ["ejecutivo", "fecha_gestion", "servicio", "tipo_cartera"]
+    
+  pdps_por_hora:
+    formula: "SUM(CASE WHEN es_pdp_homologado = 'SI' THEN 1 ELSE 0 END) / (SUM(duracion_segundos) / 3600)"
+    group_by: ["ejecutivo", "fecha_gestion"]
+    
+  productividad_diaria:
+    formula: "COUNT(*) / COUNT(DISTINCT fecha_gestion)"
+    group_by: ["ejecutivo"]
+
+# 📝 METADATOS CORREGIDOS
 metadata:
-  version: "2.0.0"
+  version: "3.0.0"
   created_date: "2025-06-10"
   last_updated: "2025-06-11"
-  correction: "CRÍTICA - Corregida fuente de datos de dash_ a batch_ tables"
-  bigquery_pattern: "batch_P3fV4dWNeMkN5RJMhV8e_*"
-  total_source_tables: 6
-  mapped_fields: 35
-  calculated_fields: 3
-  integration_complexity: "multitable_joins"
+  correction: "ESTRUCTURA REAL IDENTIFICADA - Conectado a BigQuery"
+  
+  source_tables_identified: 8
+  batch_tables: 6
+  operational_tables: 2
+  homologation_tables: 2
+  
+  key_findings:
+    - "Gestiones CALL en mibotair_P3fV4dWNeMkN5RJMhV8e"
+    - "Gestiones VOICEBOT en voicebot_P3fV4dWNeMkN5RJMhV8e"
+    - "Datos maestros en tablas batch_*"
+    - "Homologación en tablas dedicadas"
+    - "Estructura particionada por mes"
+  
+  integration_approach: "UNION de gestiones + JOINs con maestros"
+  homologation_approach: "Usar tablas homologacion existentes"
   
   change_log:
     - version: "1.0.0"
       date: "2025-06-10"
-      changes: "Versión inicial con tabla dash incorrecta"
+      changes: "Versión inicial especulativa"
     - version: "2.0.0"
       date: "2025-06-11"
-      changes: "CORRECCIÓN CRÍTICA: Migrado a tablas batch originales"
+      changes: "Corrección a tablas batch"
+    - version: "3.0.0"
+      date: "2025-06-11"
+      changes: "ESTRUCTURA REAL - Conectado a BigQuery y identificadas fuentes"
