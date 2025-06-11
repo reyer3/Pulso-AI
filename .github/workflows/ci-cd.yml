@@ -147,7 +147,7 @@ jobs:
       - name: 🗄️ Set up test database
         run: |
           PGPASSWORD=test_password psql -h localhost -U pulso_ai -d pulso_ai_test -c "
-            CREATE EXTENSION IF NOT EXISTS uuid-ossp;
+            CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
             CREATE EXTENSION IF NOT EXISTS pgcrypto;
           "
 
