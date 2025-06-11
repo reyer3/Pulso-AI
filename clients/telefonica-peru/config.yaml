@@ -1,0 +1,263 @@
+# 🏢 Configuración Principal - Telefónica del Perú
+# Basado en: Issue #12 [TELEFONICA-001] Configuración inicial
+
+client:
+  id: "telefonica-peru"
+  name: "Telefónica del Perú" 
+  region: "PE"
+  timezone: "America/Lima"
+  currency: "PEN"
+  language: "es"
+  
+business_model:
+  type: "debt_collection"
+  primary_kpis: ["tasa_contactabilidad", "pdps_por_hora", "productividad_diaria"]
+  target_users: ["supervisores", "gerentes", "analistas"]
+
+# 📊 DIMENSIONES DE ANÁLISIS
+dimensions:
+  ejecutivo:
+    type: "categorical"
+    display_name: "Ejecutivo"
+    description: "Agente de cobranza individual"
+    source_field: "ejecutivo"
+    affects_dimensions: ["cartera", "servicio", "zona"]
+    constraints:
+      max_values: 100
+      exclude_values: ["DISCADOR", "SISTEMA"]
+    
+  servicio:
+    type: "categorical"
+    display_name: "Línea de Servicio"
+    description: "Tipo de servicio telecomunicaciones"
+    source_field: "linea_servicio"
+    valid_values: ["MOVIL", "FIJA"]
+    default_filter: ["MOVIL", "FIJA"]
+    
+  cartera:
+    type: "categorical"
+    display_name: "Tipo de Cartera"
+    description: "Segmentación de clientes por mora"
+    source_field: "tipo_cartera"
+    valid_values: ["Gestión Temprana", "Altas Nuevas", "CF", "Regular"]
+    business_priority: ["Gestión Temprana", "Altas Nuevas"]
+    
+  zona:
+    type: "categorical"
+    display_name: "Zona Geográfica"
+    description: "Área territorial de operación"
+    source_field: "zona_geografica"
+    hierarchy: ["region", "provincia", "distrito"]
+    
+  canal:
+    type: "categorical"
+    display_name: "Canal de Gestión"
+    description: "Medio de contacto utilizado"
+    source_field: "canal"
+    valid_values: ["CALL", "VOICEBOT"]
+    automation_flag:
+      CALL: false
+      VOICEBOT: true
+    
+  fecha:
+    type: "temporal"
+    display_name: "Fecha"
+    description: "Dimensión temporal para análisis"
+    source_field: "fecha_gestion"
+    granularities: ["day", "week", "month", "quarter"]
+    default_range: "last_30_days"
+    business_calendar:
+      exclude_holidays: true
+      weekend_handling: "include"
+
+# 📈 MÉTRICAS DE NEGOCIO
+metrics:
+  # Métrica principal de productividad
+  pdps_por_hora:
+    formula: "gestiones_pdp / horas_trabajadas"
+    display_name: "PDPs por Hora"
+    description: "Promesas de pago generadas por hora trabajada"
+    format: "decimal_2"
+    unit: "pdps/h"
+    thresholds:
+      poor: 1.0
+      warning: 2.0
+      good: 3.5
+      excellent: 5.0
+    target: 3.0
+    
+  # Métrica principal de contactabilidad
+  tasa_contactabilidad:
+    formula: "(contactos_efectivos / total_gestiones) * 100"
+    display_name: "Tasa de Contactabilidad"
+    description: "Porcentaje de gestiones con contacto efectivo"
+    format: "percentage_1"
+    unit: "%"
+    thresholds:
+      poor: 30.0
+      warning: 45.0
+      good: 60.0
+      excellent: 75.0
+    target: 55.0
+    
+  # Métrica de cumplimiento
+  compromisos_cumplidos:
+    formula: "(compromisos_cumplidos / compromisos_total) * 100"
+    display_name: "% Compromisos Cumplidos"
+    description: "Porcentaje de PDPs que resultaron en pago"
+    format: "percentage_1"
+    unit: "%"
+    thresholds:
+      poor: 20.0
+      warning: 35.0
+      good: 50.0
+      excellent: 70.0
+    target: 45.0
+    
+  # Métrica de volumen
+  productividad_diaria:
+    formula: "gestiones_realizadas / dias_trabajados"
+    display_name: "Gestiones por Día"
+    description: "Promedio de gestiones realizadas por día"
+    format: "decimal_1"
+    unit: "gestiones/día"
+    thresholds:
+      poor: 50.0
+      warning: 80.0
+      good: 120.0
+      excellent: 150.0
+    target: 100.0
+    
+  # Métricas auxiliares
+  total_gestiones:
+    formula: "COUNT(*)"
+    display_name: "Total Gestiones"
+    format: "integer"
+    aggregation: "sum"
+    
+  contactos_efectivos:
+    formula: "SUM(CASE WHEN es_contacto_efectivo THEN 1 ELSE 0 END)"
+    display_name: "Contactos Efectivos"
+    format: "integer"
+    aggregation: "sum"
+    
+  monto_gestionado:
+    formula: "SUM(monto_deuda)"
+    display_name: "Monto Gestionado"
+    format: "currency"
+    currency: "PEN"
+    aggregation: "sum"
+
+# 🎛️ CONFIGURACIÓN DE FILTROS
+filters:
+  default_filters:
+    fecha: "last_30_days"
+    servicio: ["MOVIL", "FIJA"]
+    
+  quick_filters:
+    - name: "Solo Móvil"
+      filters: {servicio: ["MOVIL"]}
+    - name: "Gestión Temprana"
+      filters: {cartera: ["Gestión Temprana"]}
+    - name: "Top Ejecutivos"
+      filters: {ejecutivo: ["top_10_by_pdps"]}  # Lógica especial
+      
+  cross_filtering:
+    enabled: true
+    response_time_target: 200  # ms
+    cache_suggestions: true
+    suggestion_limit: 50
+
+# 📊 CONFIGURACIÓN DE DASHBOARD
+dashboard:
+  layout: "executive_summary"
+  refresh_interval: 300  # 5 minutos
+  
+  sections:
+    - type: "filter_bar"
+      position: "top"
+      dimensions: ["fecha", "ejecutivo", "cartera", "servicio", "zona"]
+      sticky: true
+      
+    - type: "kpi_cards"
+      position: "header"
+      metrics: ["tasa_contactabilidad", "pdps_por_hora", "total_gestiones", "monto_gestionado"]
+      layout: "4_columns"
+      show_trends: true
+      trend_period: "week_over_week"
+      
+    - type: "executive_table"
+      position: "main_left"
+      title: "Performance por Ejecutivo"
+      dimensions: ["ejecutivo"]
+      metrics: ["total_gestiones", "tasa_contactabilidad", "pdps_por_hora"]
+      sorting: {metric: "pdps_por_hora", direction: "desc"}
+      pagination: 20
+      
+    - type: "time_series"
+      position: "main_right"
+      title: "Tendencia Contactabilidad"
+      dimension: "fecha"
+      metric: "tasa_contactabilidad"
+      granularity: "day"
+      show_target_line: true
+      
+    - type: "comparison_chart"
+      position: "bottom_left"
+      title: "Servicios: Móvil vs Fija"
+      dimension: "servicio"
+      metrics: ["tasa_contactabilidad", "pdps_por_hora"]
+      chart_type: "bar"
+      
+    - type: "heatmap"
+      position: "bottom_right"
+      title: "Performance por Cartera y Canal"
+      dimensions: ["cartera", "canal"]
+      metric: "tasa_contactabilidad"
+      color_scheme: "performance"
+
+# ⚙️ CONFIGURACIÓN TÉCNICA
+technical:
+  data_source:
+    type: "bigquery"
+    project_id: "mibot-222814"
+    dataset: "BI_USA"
+    main_table: "dash_P3fV4dWNeMkN5RJMhV8e_vw_operativo"
+    
+  etl:
+    schedule: "0 2 * * *"  # Diario a las 2 AM Lima
+    backfill_days: 90
+    data_retention_days: 1095  # 3 años
+    
+  api:
+    max_query_results: 10000
+    query_timeout_seconds: 30
+    cache_ttl_seconds: 300
+    
+  performance:
+    dashboard_load_target: 3.0  # segundos
+    cross_filter_target: 0.2    # segundos
+    concurrent_users: 50
+
+# 🔒 CONFIGURACIÓN DE SEGURIDAD
+security:
+  data_classification: "internal"
+  row_level_security: false  # Todos ven mismos datos
+  user_roles:
+    - name: "viewer"
+      permissions: ["read_dashboard", "export_data"]
+    - name: "analyst" 
+      permissions: ["read_dashboard", "export_data", "create_filters"]
+    - name: "admin"
+      permissions: ["read_dashboard", "export_data", "create_filters", "modify_config"]
+
+# 📝 METADATOS
+metadata:
+  version: "1.0.0"
+  created_date: "2025-06-10"
+  created_by: "Pulso-AI Setup"
+  last_modified: "2025-06-10"
+  schema_version: "telefonica_v1"
+  tags: ["telecomunicaciones", "cobranza", "peru", "movistar"]
+  business_owner: "Gerencia de Cobranza"
+  technical_owner: "Equipo BI"
