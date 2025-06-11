@@ -1,93 +1,115 @@
-# Pulso-AI Development Environment
-# docker-compose up -d para levantar servicios de desarrollo
-
 version: '3.8'
 
 services:
-  # PostgreSQL Database for development
+  # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
-    container_name: pulso-postgres
+    container_name: telefonica-postgres
     environment:
-      POSTGRES_DB: pulso_dev
-      POSTGRES_USER: pulso_user
-      POSTGRES_PASSWORD: pulso_dev_password
-      POSTGRES_MULTIPLE_DATABASES: "movistar_peru,claro_colombia,tigo_guatemala"
+      POSTGRES_DB: telefonica_datamart
+      POSTGRES_USER: pulso_ai
+      POSTGRES_PASSWORD: dev_password
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./infrastructure/database/init:/docker-entrypoint-initdb.d
+      # Mount schema initialization from correct location
+      - ./core-template/src/infrastructure/database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
       - pulso-network
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U pulso_user -d pulso_dev"]
+      test: ["CMD-SHELL", "pg_isready -U pulso_ai -d telefonica_datamart"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Core Template Application (ETL + API)
+  app:
+    build: 
+      context: ./core-template
+      dockerfile: Dockerfile
+    container_name: telefonica-app
+    environment:
+      # PostgreSQL connection
+      - POSTGRES_DATABASE_URL=postgresql://pulso_ai:dev_password@postgres:5432/telefonica_datamart
+      - POSTGRES_SCHEMA=telefonica
+      
+      # BigQuery configuration
+      - BIGQUERY_PROJECT_ID=mibot-222814
+      - BIGQUERY_DATASET=BI_USA
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/secrets/bigquery-credentials.json
+      
+      # Application settings
+      - ENVIRONMENT=development
+      - LOG_LEVEL=INFO
+      - HOST=0.0.0.0
+      - PORT=8000
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      # Mount client configuration
+      - ./clients/telefonica-peru:/app/config:ro
+      # Mount BigQuery credentials from correct location
+      - ./core-template/secrets/bigquery-credentials.json:/app/secrets/bigquery-credentials.json:ro
+      # Mount source code for development (optional)
+      - ./core-template/src:/app/src:ro
+    networks:
+      - pulso-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "/app/healthcheck.py"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Gateway (Nginx + Routing)
+  gateway:
+    image: nginx:alpine
+    container_name: telefonica-gateway
+    ports:
+      - "3000:80"
+    volumes:
+      # Mount gateway configuration from correct location
+      - ./gateway/nginx.conf:/etc/nginx/nginx.conf:ro
+      # Mount static files (dashboard) from correct location
+      - ./gateway/static:/usr/share/nginx/html:ro
+    depends_on:
+      - app
+    networks:
+      - pulso-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
       interval: 30s
       timeout: 10s
       retries: 3
 
-  # Redis for caching and session storage
+  # Redis (Future use for caching)
   redis:
     image: redis:7-alpine
-    container_name: pulso-redis
+    container_name: telefonica-redis
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     networks:
       - pulso-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    restart: unless-stopped
     command: redis-server --appendonly yes
 
-  # pgAdmin for database management
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: pulso-pgadmin
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@pulso-ai.local
-      PGADMIN_DEFAULT_PASSWORD: admin123
-      PGADMIN_CONFIG_SERVER_MODE: 'False'
-    ports:
-      - "5050:80"
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
-    networks:
-      - pulso-network
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  # Redis Commander for Redis management
-  redis-commander:
-    image: rediscommander/redis-commander:latest
-    container_name: pulso-redis-commander
-    environment:
-      REDIS_HOSTS: local:redis:6379
-    ports:
-      - "8081:8081"
-    networks:
-      - pulso-network
-    depends_on:
-      redis:
-        condition: service_healthy
-
-# Volumes for data persistence
 volumes:
   postgres_data:
     driver: local
   redis_data:
     driver: local
-  pgadmin_data:
-    driver: local
 
-# Network for service communication
 networks:
   pulso-network:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
+    name: pulso-telefonica

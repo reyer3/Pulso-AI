@@ -98,9 +98,10 @@ jobs:
       postgres:
         image: postgres:15-alpine
         env:
-          POSTGRES_DB: pulso_ai_test
+          # 🔧 FIXED: Use same DB name as docker-compose.yml
+          POSTGRES_DB: telefonica_datamart
           POSTGRES_USER: pulso_ai
-          POSTGRES_PASSWORD: test_password
+          POSTGRES_PASSWORD: dev_password
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -138,17 +139,21 @@ jobs:
       - name: ⚙️ Configure test environment
         run: |
           cd core-template
-          cp ../.env.example .env
-          # Override with test values
-          echo "DATABASE_URL=postgresql://pulso_ai:test_password@localhost:5432/pulso_ai_test" >> .env
-          echo "REDIS_URL=redis://localhost:6379/1" >> .env
+          # 🔧 FIXED: Use consistent database configuration
+          echo "POSTGRES_DATABASE_URL=postgresql://pulso_ai:dev_password@localhost:5432/telefonica_datamart" >> .env
+          echo "POSTGRES_SCHEMA=telefonica" >> .env
+          echo "BIGQUERY_PROJECT_ID=mibot-222814" >> .env
+          echo "BIGQUERY_DATASET=BI_USA" >> .env
           echo "ENVIRONMENT=testing" >> .env
+          echo "LOG_LEVEL=INFO" >> .env
 
       - name: 🗄️ Set up test database
         run: |
-          PGPASSWORD=test_password psql -h localhost -U pulso_ai -d pulso_ai_test -c "
-            CREATE EXTENSION IF NOT EXISTS uuid-ossp;
-            CREATE EXTENSION IF NOT EXISTS pgcrypto;
+          # 🔧 FIXED: Use correct database name
+          PGPASSWORD=dev_password psql -h localhost -U pulso_ai -d telefonica_datamart -c "
+            CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";
+            CREATE EXTENSION IF NOT EXISTS \"pgcrypto\";
+            CREATE SCHEMA IF NOT EXISTS telefonica;
           "
 
       - name: 🧪 Run tests
@@ -249,8 +254,18 @@ jobs:
 
       - name: 🧪 Test Docker environment
         run: |
-          # Copy .env.example to .env for testing
-          cp .env.example .env
+          # 🔧 FIXED: Create minimal BigQuery credentials for testing
+          mkdir -p core-template/secrets
+          echo '{
+            "type": "service_account",
+            "project_id": "mibot-222814",
+            "private_key_id": "test-key-id",
+            "private_key": "-----BEGIN PRIVATE KEY-----\nTEST_PRIVATE_KEY\n-----END PRIVATE KEY-----\n",
+            "client_email": "test@mibot-222814.iam.gserviceaccount.com",
+            "client_id": "test-client-id",
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token"
+          }' > core-template/secrets/bigquery-credentials.json
           
           # Start services
           docker compose up -d postgres redis
@@ -258,8 +273,8 @@ jobs:
           # Wait for services to be ready
           sleep 30
           
-          # Test database connection
-          docker compose exec -T postgres psql -U pulso_ai -d pulso_ai_dev -c "SELECT version();"
+          # 🔧 FIXED: Test database connection with correct name
+          docker compose exec -T postgres psql -U pulso_ai -d telefonica_datamart -c "SELECT version();"
           
           # Test Redis connection
           docker compose exec -T redis redis-cli ping
@@ -302,5 +317,5 @@ jobs:
           echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "**Actor:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Note:** This is Phase 0 - Development Environment Setup" >> $GITHUB_STEP_SUMMARY
-          echo "Some tools may show warnings but this is expected for initial setup." >> $GITHUB_STEP_SUMMARY
+          echo "**Issue #19:** Pipeline ETL básico funcional - CI/CD configuration aligned ✅" >> $GITHUB_STEP_SUMMARY
+          echo "Database: telefonica_datamart | Schema: telefonica | Environment: consistent" >> $GITHUB_STEP_SUMMARY
