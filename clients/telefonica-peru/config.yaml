@@ -1,0 +1,347 @@
+# 🏢 Configuración Principal - Telefónica del Perú
+# Basado en: Issue #12 [TELEFONICA-001] Configuración inicial
+# CORRECCIÓN CRÍTICA: Fuentes reales de BigQuery identificadas
+
+client:
+  id: "telefonica-peru"
+  name: "Telefónica del Perú" 
+  region: "PE"
+  timezone: "America/Lima"
+  currency: "PEN"
+  language: "es"
+  
+business_model:
+  type: "debt_collection"
+  primary_kpis: ["tasa_contactabilidad", "pdps_por_hora", "productividad_diaria"]
+  target_users: ["supervisores", "gerentes", "analistas"]
+
+# 📊 FUENTES DE DATOS REALES - IDENTIFICADAS VIA BIGQUERY
+data_sources:
+  # Tablas batch - datos maestros y transaccionales
+  batch_tables:
+    asignacion: "batch_P3fV4dWNeMkN5RJMhV8e_asignacion"
+    master_luna: "batch_P3fV4dWNeMkN5RJMhV8e_master_luna"
+    master_contacto: "batch_P3fV4dWNeMkN5RJMhV8e_master_contacto"
+    tran_deuda: "batch_P3fV4dWNeMkN5RJMhV8e_tran_deuda"
+    pagos: "batch_P3fV4dWNeMkN5RJMhV8e_pagos"
+    campanas: "batch_P3fV4dWNeMkN5RJMhV8e_campanas"
+    
+  # Tablas operativas - gestiones reales
+  operational_tables:
+    gestiones_call: "mibotair_P3fV4dWNeMkN5RJMhV8e"      # Ejecutivos humanos
+    gestiones_voicebot: "voicebot_P3fV4dWNeMkN5RJMhV8e"  # Bot automatizado
+    
+  # Tablas de homologación
+  homologation_tables:
+    call_rules: "homologacion_P3fV4dWNeMkN5RJMhV8e_call"
+    voicebot_rules: "homologacion_P3fV4dWNeMkN5RJMhV8e_voicebot"
+
+# 📊 DIMENSIONES DE ANÁLISIS - MAPEADAS A FUENTES REALES
+dimensions:
+  ejecutivo:
+    type: "categorical"
+    display_name: "Ejecutivo"
+    description: "Agente de cobranza individual"
+    source_field: "nombre_agente"  # mibotair table
+    source_table: "mibotair_P3fV4dWNeMkN5RJMhV8e"
+    affects_dimensions: ["cartera", "servicio", "zona"]
+    constraints:
+      max_values: 100
+      exclude_values: ["DISCADOR", "SISTEMA"]
+    business_rule: "VOICEBOT → 'VOICEBOT_AUTOMATICO'"
+    
+  servicio:
+    type: "categorical"
+    display_name: "Línea de Servicio"
+    description: "Tipo de servicio telecomunicaciones"
+    source_field: "negocio"  # asignacion table
+    source_table: "batch_P3fV4dWNeMkN5RJMhV8e_asignacion"
+    valid_values: ["MOVIL", "FIJA"]
+    default_filter: ["MOVIL", "FIJA"]
+    mapping:
+      "MOVIL": "MOVIL"
+      "FIJA": "FIJA" 
+      "FIJO": "FIJA"
+    
+  cartera:
+    type: "categorical"
+    display_name: "Tipo de Cartera"
+    description: "Segmentación de clientes por mora"
+    source_field: "tramo_gestion"  # asignacion table
+    source_table: "batch_P3fV4dWNeMkN5RJMhV8e_asignacion"
+    derived_values: ["Gestión Temprana", "Altas Nuevas", "CF", "Regular"]
+    business_priority: ["Gestión Temprana", "Altas Nuevas"]
+    extraction_rule: "Derivado de tramo_gestion mediante reglas de negocio"
+    
+  zona:
+    type: "categorical"
+    display_name: "Zona Geográfica"
+    description: "Área territorial de operación"
+    source_field: "zona"  # asignacion table
+    source_table: "batch_P3fV4dWNeMkN5RJMhV8e_asignacion"
+    hierarchy: ["region", "provincia", "distrito"]
+    
+  canal:
+    type: "categorical"
+    display_name: "Canal de Gestión"
+    description: "Medio de contacto utilizado"
+    source_logic: "Derivado de tabla origen"
+    valid_values: ["CALL", "VOICEBOT"]
+    automation_flag:
+      CALL: false
+      VOICEBOT: true
+    source_derivation:
+      CALL: "mibotair_P3fV4dWNeMkN5RJMhV8e"
+      VOICEBOT: "voicebot_P3fV4dWNeMkN5RJMhV8e"
+    
+  fecha:
+    type: "temporal"
+    display_name: "Fecha"
+    description: "Dimensión temporal para análisis"
+    source_field: "date"  # Común en ambas tablas operativas
+    granularities: ["day", "week", "month", "quarter"]
+    default_range: "last_30_days"
+    business_calendar:
+      exclude_holidays: true
+      weekend_handling: "include"
+
+# 📈 MÉTRICAS DE NEGOCIO - BASADAS EN ESTRUCTURA REAL
+metrics:
+  # Métrica principal de productividad
+  pdps_por_hora:
+    formula: "gestiones_pdp / (duracion_total_segundos / 3600)"
+    display_name: "PDPs por Hora"
+    description: "Promesas de pago generadas por hora trabajada"
+    format: "decimal_2"
+    unit: "pdps/h"
+    source_fields:
+      pdp_flag: "Derivado de homologación PDPs"
+      duration: "duracion (segundos)"
+    thresholds:
+      poor: 1.0
+      warning: 2.0
+      good: 3.5
+      excellent: 5.0
+    target: 3.0
+    
+  # Métrica principal de contactabilidad
+  tasa_contactabilidad:
+    formula: "(contactos_efectivos / total_gestiones) * 100"
+    display_name: "Tasa de Contactabilidad"
+    description: "Porcentaje de gestiones con contacto efectivo"
+    format: "percentage_1"
+    unit: "%"
+    source_fields:
+      contacto_efectivo: "Derivado de homologación tipificaciones"
+      total_gestiones: "COUNT(*) de gestiones"
+    thresholds:
+      poor: 30.0
+      warning: 45.0
+      good: 60.0
+      excellent: 75.0
+    target: 55.0
+    
+  # Métrica de cumplimiento (requiere cruce con pagos)
+  compromisos_cumplidos:
+    formula: "(compromisos_cumplidos / compromisos_total) * 100"
+    display_name: "% Compromisos Cumplidos"
+    description: "Porcentaje de PDPs que resultaron en pago"
+    format: "percentage_1"
+    unit: "%"
+    source_logic: "Cruce entre gestiones PDP y tabla pagos"
+    complexity: "high"  # Requiere ventana temporal de atribución
+    thresholds:
+      poor: 20.0
+      warning: 35.0
+      good: 50.0
+      excellent: 70.0
+    target: 45.0
+    
+  # Métrica de volumen
+  productividad_diaria:
+    formula: "total_gestiones / COUNT(DISTINCT fecha_gestion)"
+    display_name: "Gestiones por Día"
+    description: "Promedio de gestiones realizadas por día"
+    format: "decimal_1"
+    unit: "gestiones/día"
+    source_fields:
+      gestiones: "COUNT(*) de registros operativos"
+      dias: "DISTINCT dates"
+    thresholds:
+      poor: 50.0
+      warning: 80.0
+      good: 120.0
+      excellent: 150.0
+    target: 100.0
+    
+  # Métricas auxiliares
+  total_gestiones:
+    formula: "COUNT(*)"
+    display_name: "Total Gestiones"
+    format: "integer"
+    aggregation: "sum"
+    source: "Union de mibotair + voicebot"
+    
+  contactos_efectivos:
+    formula: "SUM(CASE WHEN es_contacto_efectivo THEN 1 ELSE 0 END)"
+    display_name: "Contactos Efectivos"
+    format: "integer"
+    aggregation: "sum"
+    source: "Homologación de tipificaciones"
+    
+  monto_gestionado:
+    formula: "SUM(monto_exigible)"
+    display_name: "Monto Gestionado"
+    format: "currency"
+    currency: "PEN"
+    aggregation: "sum"
+    source_table: "batch_P3fV4dWNeMkN5RJMhV8e_tran_deuda"
+
+# 🎛️ CONFIGURACIÓN DE FILTROS
+filters:
+  default_filters:
+    fecha: "last_30_days"
+    servicio: ["MOVIL", "FIJA"]
+    
+  quick_filters:
+    - name: "Solo Móvil"
+      filters: {servicio: ["MOVIL"]}
+    - name: "Gestión Temprana"
+      filters: {cartera: ["Gestión Temprana"]}
+    - name: "Solo Ejecutivos Humanos"
+      filters: {canal: ["CALL"]}
+      
+  cross_filtering:
+    enabled: true
+    response_time_target: 200  # ms
+    cache_suggestions: true
+    suggestion_limit: 50
+
+# 📊 CONFIGURACIÓN DE DASHBOARD
+dashboard:
+  layout: "executive_summary"
+  refresh_interval: 300  # 5 minutos
+  
+  sections:
+    - type: "filter_bar"
+      position: "top"
+      dimensions: ["fecha", "ejecutivo", "cartera", "servicio", "zona"]
+      sticky: true
+      
+    - type: "kpi_cards"
+      position: "header"
+      metrics: ["tasa_contactabilidad", "pdps_por_hora", "total_gestiones", "monto_gestionado"]
+      layout: "4_columns"
+      show_trends: true
+      trend_period: "week_over_week"
+      
+    - type: "executive_table"
+      position: "main_left"
+      title: "Performance por Ejecutivo"
+      dimensions: ["ejecutivo"]
+      metrics: ["total_gestiones", "tasa_contactabilidad", "pdps_por_hora"]
+      sorting: {metric: "pdps_por_hora", direction: "desc"}
+      pagination: 20
+      
+    - type: "time_series"
+      position: "main_right"
+      title: "Tendencia Contactabilidad"
+      dimension: "fecha"
+      metric: "tasa_contactabilidad"
+      granularity: "day"
+      show_target_line: true
+      
+    - type: "comparison_chart"
+      position: "bottom_left"
+      title: "Servicios: Móvil vs Fija"
+      dimension: "servicio"
+      metrics: ["tasa_contactabilidad", "pdps_por_hora"]
+      chart_type: "bar"
+      
+    - type: "heatmap"
+      position: "bottom_right"
+      title: "Performance por Cartera y Canal"
+      dimensions: ["cartera", "canal"]
+      metric: "tasa_contactabilidad"
+      color_scheme: "performance"
+
+# ⚙️ CONFIGURACIÓN TÉCNICA - FUENTES REALES
+technical:
+  data_source:
+    type: "bigquery_multi_table"
+    project_id: "mibot-222814"
+    dataset: "BI_USA"
+    
+    # Configuración específica por tipo de tabla
+    table_configs:
+      batch_tables:
+        partition_strategy: "DATETIME_TRUNC(creado_el, MONTH)"
+        read_mode: "incremental"
+        
+      operational_tables:
+        partition_strategy: "DATE extraction from datetime fields"
+        read_mode: "daily_partition"
+        
+      homologation_tables:
+        read_mode: "full_refresh"
+        cache_duration: "24h"
+    
+  etl:
+    schedule: "0 2 * * *"  # Diario a las 2 AM Lima
+    backfill_days: 90
+    data_retention_days: 1095  # 3 años
+    integration_approach: "UNION gestiones + JOINs maestros"
+    
+  api:
+    max_query_results: 10000
+    query_timeout_seconds: 30
+    cache_ttl_seconds: 300
+    
+  performance:
+    dashboard_load_target: 3.0  # segundos
+    cross_filter_target: 0.2    # segundos
+    concurrent_users: 50
+
+# 🔒 CONFIGURACIÓN DE SEGURIDAD
+security:
+  data_classification: "internal"
+  row_level_security: false  # Todos ven mismos datos
+  user_roles:
+    - name: "viewer"
+      permissions: ["read_dashboard", "export_data"]
+    - name: "analyst" 
+      permissions: ["read_dashboard", "export_data", "create_filters"]
+    - name: "admin"
+      permissions: ["read_dashboard", "export_data", "create_filters", "modify_config"]
+
+# 📝 METADATOS ACTUALIZADOS
+metadata:
+  version: "2.0.0"
+  created_date: "2025-06-10"
+  last_modified: "2025-06-11"
+  correction: "CRÍTICA - Fuentes de datos reales identificadas via BigQuery"
+  schema_version: "telefonica_real_sources_v1"
+  tags: ["telecomunicaciones", "cobranza", "peru", "movistar", "bigquery_real"]
+  business_owner: "Gerencia de Cobranza"
+  technical_owner: "Equipo BI"
+  
+  source_validation:
+    bigquery_connection: "VERIFIED"
+    tables_identified: 8
+    batch_tables: 6
+    operational_tables: 2
+    homologation_tables: 2
+    
+  data_architecture:
+    approach: "Separated sources integrated via ETL"
+    operational_data: "mibotair + voicebot tables"
+    master_data: "batch_* tables"
+    homologation: "homologacion_* tables"
+    
+  change_log:
+    - version: "1.0.0"
+      date: "2025-06-10"
+      changes: "Configuración inicial con fuentes especulativas"
+    - version: "2.0.0"
+      date: "2025-06-11"
+      changes: "CORRECCIÓN CRÍTICA - Conectado a BigQuery y identificadas fuentes reales"
