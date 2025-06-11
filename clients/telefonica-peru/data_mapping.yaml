@@ -1,0 +1,290 @@
+# 🔄 Mapeo de Campos BigQuery → Modelo de Dominio
+# Telefónica del Perú - Transformación de datos
+
+# 📊 TABLA FUENTE
+source:
+  project_id: "mibot-222814"
+  dataset: "BI_USA"
+  table: "dash_P3fV4dWNeMkN5RJMhV8e_vw_operativo"
+  description: "Tabla operativa de gestiones de cobranza Telefónica"
+
+# 🎯 MAPEO DE CAMPOS PRINCIPALES
+field_mapping:
+  # Identificadores únicos
+  cod_luna:
+    target_field: "client_id"
+    data_type: "string"
+    description: "Identificador único del cliente"
+    validation:
+      - not_null: true
+      - format: "numeric_string"
+    transformation: "CAST(cod_luna AS STRING)"
+    
+  nro_documento:
+    target_field: "document_number"
+    data_type: "string" 
+    description: "Número de documento en deuda"
+    validation:
+      - not_null: true
+    transformation: "TRIM(nro_documento)"
+    
+  # Dimensiones de negocio
+  ejecutivo:
+    target_field: "agent_name"
+    data_type: "string"
+    description: "Nombre del ejecutivo/agente de cobranza"
+    validation:
+      - not_null: true
+      - exclude_values: ["DISCADOR", "SISTEMA", "NULL", ""]
+    transformation: "UPPER(TRIM(ejecutivo))"
+    business_rules:
+      - "Si ejecutivo IS NULL O = 'DISCADOR' → 'SISTEMA_AUTOMATICO'"
+      - "Si ejecutivo = 'VOICEBOT' → 'VOICEBOT_AUTOMATICO'"
+    
+  linea_servicio:
+    target_field: "service_type"
+    data_type: "string"
+    description: "Tipo de servicio telecomunicaciones"
+    validation:
+      - not_null: true
+      - valid_values: ["MOVIL", "FIJA"]
+    transformation: "UPPER(TRIM(linea_servicio))"
+    default_value: "MOVIL"
+    
+  tipo_cartera:
+    target_field: "portfolio_type"
+    data_type: "string"
+    description: "Segmentación de cartera por mora"
+    validation:
+      - not_null: true
+    transformation: "CASE 
+      WHEN tipo_cartera LIKE '%Temprana%' THEN 'Gestión Temprana'
+      WHEN tipo_cartera LIKE '%AN%' OR tipo_cartera LIKE '%Altas%' THEN 'Altas Nuevas'  
+      WHEN tipo_cartera LIKE '%CF%' THEN 'CF'
+      WHEN tipo_cartera LIKE '%Regular%' THEN 'Regular'
+      ELSE 'Otros'
+    END"
+    business_mapping:
+      "Gestión Temprana": "0-30 días mora"
+      "Altas Nuevas": "Nuevos clientes"
+      "CF": "Clientes frecuentes"
+      "Regular": "31-90 días mora"
+    
+  zona_geografica:
+    target_field: "geographic_zone"
+    data_type: "string"
+    description: "Zona territorial de gestión"
+    transformation: "TRIM(zona_geografica)"
+    validation:
+      - not_null: false  # Puede ser NULL
+    
+  canal:
+    target_field: "contact_channel"
+    data_type: "string"
+    description: "Canal de contacto utilizado"
+    validation:
+      - not_null: true
+      - valid_values: ["CALL", "VOICEBOT"]
+    transformation: "CASE
+      WHEN UPPER(canal) LIKE '%VOICE%' OR UPPER(canal) LIKE '%BOT%' THEN 'VOICEBOT'
+      WHEN UPPER(canal) LIKE '%CALL%' OR UPPER(canal) LIKE '%TELEFON%' THEN 'CALL'
+      ELSE 'CALL'  
+    END"
+    
+  # Dimensiones temporales
+  fecha_gestion:
+    target_field: "management_date"
+    data_type: "date"
+    description: "Fecha de la gestión realizada"
+    validation:
+      - not_null: true
+      - range: "2020-01-01 to CURRENT_DATE"
+    transformation: "DATE(fecha_gestion)"
+    
+  hora_gestion:
+    target_field: "management_hour"
+    data_type: "integer"
+    description: "Hora de la gestión (0-23)"
+    validation:
+      - range: [0, 23]
+    transformation: "EXTRACT(HOUR FROM TIMESTAMP(fecha_gestion, hora_gestion))"
+    
+  # Campos de contactabilidad
+  contactabilidad:
+    target_field: "contact_result"
+    data_type: "string"
+    description: "Resultado de la gestión de contacto"
+    validation:
+      - not_null: true
+    transformation: "UPPER(TRIM(contactabilidad))"
+    homologation_rules:
+      # Contactos efectivos
+      "CONTACTO EFECTIVO": "CONTACTO_EFECTIVO"
+      "CONTACTO": "CONTACTO_EFECTIVO"
+      "HABLA": "CONTACTO_EFECTIVO"
+      "CONVERSA": "CONTACTO_EFECTIVO"
+      # Contactos no efectivos  
+      "CONTACTO NO EFECTIVO": "CONTACTO_NO_EFECTIVO"
+      "OCUPADO": "CONTACTO_NO_EFECTIVO"
+      "CORTA": "CONTACTO_NO_EFECTIVO"
+      "CUELGA": "CONTACTO_NO_EFECTIVO"
+      # Sin contacto
+      "NO CONTACTO": "NO_CONTACTO"
+      "NO CONTESTA": "NO_CONTACTO" 
+      "APAGADO": "NO_CONTACTO"
+      "FUERA_SERVICIO": "NO_CONTACTO"
+    
+  es_pdp:
+    target_field: "is_payment_promise"
+    data_type: "boolean"
+    description: "Indica si la gestión resultó en PDP"
+    validation:
+      - not_null: true
+    transformation: "CASE 
+      WHEN es_pdp = true OR es_pdp = 1 OR UPPER(es_pdp) = 'TRUE' THEN true
+      ELSE false
+    END"
+    
+  # Métricas de volumen
+  horas_trabajadas:
+    target_field: "worked_hours"
+    data_type: "decimal"
+    description: "Horas trabajadas por el ejecutivo"
+    validation:
+      - range: [0, 24]
+      - not_negative: true
+    transformation: "COALESCE(horas_trabajadas, 8.0)"  # Default 8 horas
+    
+  # Campos monetarios
+  monto_exigible:
+    target_field: "outstanding_amount"
+    data_type: "decimal"
+    description: "Monto de deuda exigible en PEN"
+    validation:
+      - not_negative: true
+    transformation: "COALESCE(monto_exigible, 0.0)"
+    currency: "PEN"
+
+# 🧮 CAMPOS CALCULADOS
+calculated_fields:
+  # Flags de contactabilidad
+  es_contacto_efectivo:
+    formula: "contact_result = 'CONTACTO_EFECTIVO'"
+    data_type: "boolean"
+    description: "Flag para contacto efectivo"
+    
+  es_contacto_no_efectivo:
+    formula: "contact_result = 'CONTACTO_NO_EFECTIVO'"
+    data_type: "boolean"
+    description: "Flag para contacto no efectivo"
+    
+  es_sin_contacto:
+    formula: "contact_result = 'NO_CONTACTO'"
+    data_type: "boolean"
+    description: "Flag para sin contacto"
+    
+  # Banderas de canal
+  es_canal_automatico:
+    formula: "contact_channel = 'VOICEBOT'"
+    data_type: "boolean"
+    description: "Flag para canal automatizado"
+    
+  # Tiempo y fechas
+  dia_semana:
+    formula: "EXTRACT(DAYOFWEEK FROM management_date)"
+    data_type: "integer"
+    description: "Día de la semana (1=Domingo, 7=Sábado)"
+    
+  mes_gestion:
+    formula: "EXTRACT(MONTH FROM management_date)"
+    data_type: "integer"
+    description: "Mes de la gestión (1-12)"
+    
+  trimestre_gestion:
+    formula: "EXTRACT(QUARTER FROM management_date)"
+    data_type: "integer"
+    description: "Trimestre de la gestión (1-4)"
+
+# 🔍 VALIDACIONES DE CALIDAD
+data_quality_rules:
+  completeness:
+    required_fields: ["client_id", "agent_name", "service_type", "management_date", "contact_result"]
+    completeness_threshold: 95  # % mínimo de completitud
+    
+  consistency:
+    - rule: "Si is_payment_promise = true, entonces contact_result debe ser 'CONTACTO_EFECTIVO'"
+      severity: "error"
+    - rule: "worked_hours debe estar entre 0 y 24"
+      severity: "warning" 
+    - rule: "management_date no puede ser futuro"
+      severity: "error"
+      
+  uniqueness:
+    - fields: ["client_id", "management_date", "management_hour", "agent_name"]
+      description: "No debe haber gestiones duplicadas exactas"
+      
+  business_rules:
+    - rule: "VOICEBOT_AUTOMATICO no debe tener worked_hours > 24"
+      severity: "warning"
+    - rule: "outstanding_amount negativo requiere investigación"
+      severity: "warning"
+
+# 📊 TRANSFORMACIONES ESPECÍFICAS BIGQUERY
+bigquery_specific:
+  # Particionado por fecha
+  partition_field: "management_date"
+  clustering_fields: ["service_type", "portfolio_type", "agent_name"]
+  
+  # Query optimizada para extracción
+  extraction_query: |
+    SELECT
+      CAST(cod_luna AS STRING) as client_id,
+      TRIM(nro_documento) as document_number,
+      CASE 
+        WHEN ejecutivo IS NULL OR ejecutivo = 'DISCADOR' THEN 'SISTEMA_AUTOMATICO'
+        WHEN ejecutivo = 'VOICEBOT' THEN 'VOICEBOT_AUTOMATICO'
+        ELSE UPPER(TRIM(ejecutivo))
+      END as agent_name,
+      UPPER(TRIM(linea_servicio)) as service_type,
+      CASE 
+        WHEN tipo_cartera LIKE '%Temprana%' THEN 'Gestión Temprana'
+        WHEN tipo_cartera LIKE '%AN%' OR tipo_cartera LIKE '%Altas%' THEN 'Altas Nuevas'  
+        WHEN tipo_cartera LIKE '%CF%' THEN 'CF'
+        WHEN tipo_cartera LIKE '%Regular%' THEN 'Regular'
+        ELSE 'Otros'
+      END as portfolio_type,
+      TRIM(zona_geografica) as geographic_zone,
+      CASE
+        WHEN UPPER(canal) LIKE '%VOICE%' OR UPPER(canal) LIKE '%BOT%' THEN 'VOICEBOT'
+        ELSE 'CALL'  
+      END as contact_channel,
+      DATE(fecha_gestion) as management_date,
+      EXTRACT(HOUR FROM TIMESTAMP(fecha_gestion)) as management_hour,
+      UPPER(TRIM(contactabilidad)) as contact_result_raw,
+      CASE 
+        WHEN es_pdp = true OR es_pdp = 1 THEN true
+        ELSE false
+      END as is_payment_promise,
+      COALESCE(horas_trabajadas, 8.0) as worked_hours,
+      COALESCE(monto_exigible, 0.0) as outstanding_amount
+    FROM `{project_id}.{dataset}.{table}`
+    WHERE DATE(fecha_gestion) = '{partition_date}'
+      AND cod_luna IS NOT NULL
+      AND ejecutivo IS NOT NULL
+    
+  # Configuración de rendimiento
+  performance:
+    max_bytes_billed: 1000000000  # 1GB límite por query
+    use_legacy_sql: false
+    use_query_cache: true
+    job_timeout_ms: 300000  # 5 minutos
+
+# 📝 METADATOS DEL MAPEO
+metadata:
+  version: "1.0.0"
+  created_date: "2025-06-10"
+  bigquery_table_schema_version: "telefonica_prod_v2.1"
+  last_validated: "2025-06-10"
+  total_mapped_fields: 15
+  calculated_fields: 8
+  data_quality_rules: 12
